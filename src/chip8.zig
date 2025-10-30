@@ -60,8 +60,7 @@ pub const Chip8 = struct {
         const file = try std.fs.cwd().openFile(file_path, .{});
 
         const size: usize = try file.getEndPos();
-        const buffer: []const u8 = try std.heap.ArenaAllocator.init(std.heap.page_allocator);
-        defer std.heap.page_allocator.free(buffer);
+        const buffer: []const u8 = try self.allocator.alloc(u8, size);
 
         file.reader(buffer);
 
