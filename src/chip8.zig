@@ -25,6 +25,8 @@ pub const Chip8 = struct {
         0xF0, 0x80, 0xF0, 0x80, 0x80, // F
     };
 
+    const rand = std.crypto.random;
+
     arena: std.heap.ArenaAllocator,
     allocator: std.mem.Allocator,
     registers: [16]u8,
@@ -54,6 +56,10 @@ pub const Chip8 = struct {
 
     pub fn deinit(self: @This()) void {
         self.arena.deinit();
+    }
+
+    fn getRandInt() u8 {
+        return rand.intRangeAtMost(u8, 0, 255);
     }
 
     pub fn loadROM(self: @This(), file_path: []const u8) !void {
