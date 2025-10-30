@@ -25,6 +25,8 @@ pub const Chip8 = struct {
         0xF0, 0x80, 0xF0, 0x80, 0x80, // F
     };
 
+    arena: std.heap.ArenaAllocator,
+    allocator: std.mem.Allocator,
     registers: [16]u8,
     memory: [4096]u8,
     index: u16,
@@ -37,7 +39,12 @@ pub const Chip8 = struct {
     video: [64 * 32]u32,
     opcode: u16,
 
-    pub fn init(self: @This()) void {
+    pub fn init(self: @This(), allocator: std.mem.Allocator) !void {
+        self.arena = std.heap.ArenaAllocator.init(allocator);
+        errdefer self.allocator.deinit();
+
+        self.allocator = self.arena.allocator();
+
         self.pc = start_address;
 
         for (fontset_size) |i| {
@@ -45,11 +52,15 @@ pub const Chip8 = struct {
         }
     }
 
+    pub fn deinit(self: @This()) void {
+        self.arena.deinit();
+    }
+
     pub fn loadROM(self: @This(), file_path: []const u8) !void {
         const file = try std.fs.cwd().openFile(file_path, .{});
 
         const size: usize = try file.getEndPos();
-        const buffer: []const u8 = try std.heap.page_allocator.alloc(u8, size);
+        const buffer: []const u8 = try std.heap.ArenaAllocator.init(std.heap.page_allocator);
         defer std.heap.page_allocator.free(buffer);
 
         file.reader(buffer);
