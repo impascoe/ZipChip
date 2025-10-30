@@ -74,4 +74,10 @@ pub const Chip8 = struct {
             self.memory[start_address + i] = buffer[i];
         }
     }
+
+    // Instructions
+    // 00E0 - CLS: Clear the display.
+    fn op00E0(self: @This()) void {
+        @memset(self.video, 0);
+    }
 };
