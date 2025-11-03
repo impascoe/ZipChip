@@ -80,4 +80,24 @@ pub const Chip8 = struct {
     fn op00E0(self: @This()) void {
         @memset(self.video, 0);
     }
+
+    // 00EE - RET: Return from a subroutine.
+    fn op00EE(self: @This()) void {
+        self.sp -= 1;
+        self.pc = self.stack[self.sp];
+    }
+
+    // 1NNN - JP to addr: Jump to NNN
+    fn op1NNN(self: @This()) void {
+        const address: u16 = self.opcode & 0x0FFF;
+        self.pc = address;
+    }
+
+    // 2NNN - CALL addr: Call subroutine at NNN
+    fn op2NNN(self: @This()) void {
+        const address: u16 = self.opcode & 0x0FFF;
+        self.stack[self.sp] = self.pc;
+        self.pc += 1;
+        self.pc = address;
+    }
 };
