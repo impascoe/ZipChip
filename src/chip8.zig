@@ -77,6 +77,7 @@ pub const Chip8 = struct {
         return rand.intRangeAtMost(u8, 0, 255);
     }
 
+    // Load ROM into memory
     pub fn loadROM(self: *Chip8, file_path: []const u8) !void {
         const file = try std.fs.cwd().openFile(file_path, .{ .mode = .read_only });
         defer file.close();
