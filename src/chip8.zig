@@ -78,16 +78,28 @@ pub const Chip8 = struct {
     }
 
     pub fn loadROM(self: *Chip8, file_path: []const u8) !void {
-        const file = try std.fs.cwd().openFile(file_path, .{});
-        const size: usize = try file.getEndPos();
-        const buffer: []u8 = try self.allocator.alloc(u8, size);
+        const file = try std.fs.cwd().openFile(file_path, .{ .mode = .read_only });
+        defer file.close();
 
-        _ = try file.read(buffer);
+        const rom_size = try file.getEndPos();
 
-        var index: usize = 0;
+        if (rom_size > self.memory.len - start_address) {
+            return error.RomTooLarge;
+        }
 
-        while (index < size) : (index += 1) {
-            self.memory[start_address + index] = buffer[index];
+        const rom = try self.allocator.alloc(u8, rom_size);
+        defer self.allocator.free(rom);
+
+        var reader = file.reader(rom);
+
+        try reader.interface.readSliceAll(rom);
+
+        if (rom.len != rom_size) {
+            return error.FailedToReadRom;
+        }
+        var i: usize = 0;
+        while (i < rom.len) : (i += 1) {
+            self.memory[start_address + i] = rom[i];
         }
     }
 
