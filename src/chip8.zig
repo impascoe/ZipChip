@@ -95,9 +95,6 @@ pub const Chip8 = struct {
 
         try reader.interface.readSliceAll(rom);
 
-        if (rom.len != rom_size) {
-            return error.FailedToReadRom;
-        }
         var i: usize = 0;
         while (i < rom.len) : (i += 1) {
             self.memory[start_address + i] = rom[i];
@@ -125,8 +122,9 @@ pub const Chip8 = struct {
     // 2NNN - CALL addr: Call subroutine at NNN
     fn op2NNN(self: *Chip8) void {
         const address: u16 = self.opcode & 0x0FFF;
+        self.pc += 2;
         self.stack[self.sp] = self.pc;
-        self.pc += 1;
+        self.sp += 1;
         self.pc = address;
     }
 };
