@@ -248,4 +248,34 @@ pub const Chip8 = struct {
 
         self.registers[x] -= self.registers[y];
     }
+
+    // 8XY6 - SE Vx, Vy: Set Vx = Vx SHR 1
+    fn op8XY6(self: *Chip8) void {
+        const x: u8 = @as(u8, (self.opcode & 0x0F00) >> 8);
+
+        self.registers[0xF] = self.registers[x] & 0x1;
+        self.registers[x] >>= 1;
+    }
+
+    // 8XY7 - SE Vx, Vy: Set Vx = Vx - Vy
+    fn op8XY7(self: *Chip8) void {
+        const x: u8 = @as(u8, (self.opcode & 0x0F00) >> 8);
+        const y: u8 = @as(u8, (self.opcode & 0x00F0) >> 4);
+
+        if (self.registers[y] > self.registers[x]) {
+            self.registers[0xF] = 1;
+        } else {
+            self.registers[0xF] = 0;
+        }
+
+        self.registers[y] -= self.registers[x];
+    }
+
+    // 8XYE - SE Vx, Vy: Set Vx = Vx SHL 1
+    fn op8XYE(self: *Chip8) void {
+        const x: u8 = @as(u8, (self.opcode & 0x0F00) >> 8);
+
+        self.registers[0xF] = (self.registers[x] & 0x80) >> 7;
+        self.registers[x] <<= 1;
+    }
 };
