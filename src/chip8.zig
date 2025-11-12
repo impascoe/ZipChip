@@ -301,6 +301,7 @@ pub const Chip8 = struct {
         self.pc = @as(u16, self.registers[0]) + address;
     }
 
+    // CXKK - RND Vx, byte: Set Vx = random byte AND kk
     fn opCXKK(self: *Chip8) void {
         const x: u8 = @as(u8, (self.opcode & 0x0F00) >> 8);
         const kk: u8 = @as(u8, self.opcode & 0x00FF);
