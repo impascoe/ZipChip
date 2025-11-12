@@ -278,4 +278,33 @@ pub const Chip8 = struct {
         self.registers[0xF] = (self.registers[x] & 0x80) >> 7;
         self.registers[x] <<= 1;
     }
+
+    // 9XY0 - SNE Vx, Vy: Skip next instruction if Vx != Vy
+    fn op9XY0(self: *Chip8) void {
+        const x: u8 = @as(u8, (self.opcode & 0x0F00) >> 8);
+        const y: u8 = @as(u8, (self.opcode & 0x00F0) >> 4);
+
+        if (self.registers[x] != self.registers[y]) {
+            self.pc += instruction_size;
+        }
+    }
+
+    // ANNN - LD I, addr: Set index = NNN
+    fn opANNN(self: *Chip8) void {
+        const address: u16 = self.opcode & 0x0FFF;
+        self.index = address;
+    }
+
+    // BNNN - JP V0, addr: Jump to location NNN + V0
+    fn opBNNN(self: *Chip8) void {
+        const address: u16 = self.opcode & 0x0FFF;
+        self.pc = @as(u16, self.registers[0]) + address;
+    }
+
+    fn opCXKK(self: *Chip8) void {
+        const x: u8 = @as(u8, (self.opcode & 0x0F00) >> 8);
+        const kk: u8 = @as(u8, self.opcode & 0x00FF);
+
+        self.registers[x] = getRandInt() & kk;
+    }
 };
