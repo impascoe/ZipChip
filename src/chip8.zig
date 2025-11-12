@@ -195,4 +195,43 @@ pub const Chip8 = struct {
 
         self.registers[x] = self.registers[y];
     }
+
+    // 8XY1 - SE Vx, Vy: Set Vx = Vx OR Vy
+    fn op8XY1(self: *Chip8) void {
+        const x: u8 = @as(u8, (self.opcode & 0x0F00) >> 8);
+        const y: u8 = @as(u8, (self.opcode & 0x00F0) >> 4);
+
+        self.registers[x] |= self.registers[y];
+    }
+
+    // 8XY2 - SE Vx, Vy: Set Vx = Vx AND Vy
+    fn op8XY2(self: *Chip8) void {
+        const x: u8 = @as(u8, (self.opcode & 0x0F00) >> 8);
+        const y: u8 = @as(u8, (self.opcode & 0x00F0) >> 4);
+
+        self.registers[x] &= self.registers[y];
+    }
+
+    // 8XY3 - SE Vx, Vy: Set Vx = Vx OR Vy
+    fn op8XY3(self: *Chip8) void {
+        const x: u8 = @as(u8, (self.opcode & 0x0F00) >> 8);
+        const y: u8 = @as(u8, (self.opcode & 0x00F0) >> 4);
+
+        self.registers[x] ^= self.registers[y];
+    }
+
+    // 8XY4 - SE Vx, Vy: Set Vx = Vx + Vy
+    fn op8XY4(self: *Chip8) void {
+        const x: u8 = @as(u8, (self.opcode & 0x0F00) >> 8);
+        const y: u8 = @as(u8, (self.opcode & 0x00F0) >> 4);
+
+        const ov = @addWithOverflow(self.registers[x], self.registers[y]);
+        if (ov[1] != 0) {
+            self.registers[0xF] = 1;
+        } else {
+            self.registers[0xF] = 0;
+        }
+
+        self.registers[x] = ov[0] & 0xFF;
+    }
 };
