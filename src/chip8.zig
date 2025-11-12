@@ -154,4 +154,13 @@ pub const Chip8 = struct {
             self.pc = address;
         }
     }
+
+    fn op3XKK(self: *Chip8) void {
+        const x: u8 = @as(u8, (self.opcode & 0x0F00) >> 8);
+        const kk: u8 = @as(u8, self.opcode & 0x00FF);
+
+        if (self.registers[x] == kk) {
+            self.pc += instruction_size;
+        }
+    }
 };
