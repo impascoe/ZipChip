@@ -106,6 +106,21 @@ pub const Chip8 = struct {
         }
     }
 
+    pub fn emulateCycle(self: *Chip8) !void {
+        const current_pc = self.pc;
+
+        // get opcode
+        const hi_byte = self.memory[current_pc];
+        const lo_byte = self.memory[current_pc + 1];
+
+        self.opcode = (@as(u16, hi_byte) << 8) | @as(u16, lo_byte);
+
+        // advance pc by default
+        self.pc += instruction_size;
+
+        // execute opcode
+    }
+
     // Instructions
     // 00E0 - CLS: Clear the display by pushing zeroes to display.
     fn op00E0(self: *Chip8) void {
@@ -134,8 +149,7 @@ pub const Chip8 = struct {
             return ProcessingError.StackOverflow;
         } else {
             const address: u16 = self.opcode & 0x0FFF;
-            const next_pc = self.pc + instruction_size;
-            self.stack[self.sp] = next_pc;
+            self.stack[self.sp] = self.pc;
             self.sp += 1;
             self.pc = address;
         }

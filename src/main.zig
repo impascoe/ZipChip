@@ -15,4 +15,30 @@ pub fn main() !void {
     chip.loadROM("dummy.c8") catch {
         std.debug.print("Could not load chip 8 file. Make sure it is a valid .c8 file.\n", .{});
     };
+
+    while (true) {
+        chip.emulateCycle() catch |err| switch (err) {
+            error.StackOverflow => {
+                std.debug.print("Stack overflow occurred during emulation.\n", .{});
+                return;
+            },
+            error.StackUnderflow => {
+                std.debug.print("Stack underflow occurred during emulation.\n", .{});
+                return;
+            },
+            error.RomTooLarge => {
+                std.debug.print("The ROM file is too large to fit in memory.\n", .{});
+                return;
+            },
+            error.InvalidOpcode => {
+                std.debug.print("Encountered invalid opcode during emulation.\n", .{});
+                return;
+            },
+            else => {
+                std.debug.print("An unexpected error occurred: {s}\n", .{err});
+                return;
+            },
+        };
+        // add timing control here.
+    }
 }
