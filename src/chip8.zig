@@ -107,7 +107,7 @@ pub const Chip8 = struct {
     }
 
     // Instructions
-    // 00E0 - CLS: Clear the display.
+    // 00E0 - CLS: Clear the display by pushing zeroes to display.
     fn op00E0(self: *Chip8) void {
         @memset(self.video, 0);
     }

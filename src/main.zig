@@ -12,7 +12,7 @@ pub fn main() !void {
 
     defer chip.deinit();
 
-    chip.loadROM("dummy.txt") catch {
+    chip.loadROM("dummy.c8") catch {
         std.debug.print("Could not load chip 8 file. Make sure it is a valid .c8 file.\n", .{});
     };
 }
