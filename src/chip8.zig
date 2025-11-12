@@ -155,6 +155,7 @@ pub const Chip8 = struct {
         }
     }
 
+    // 3XKK - SE Vx, byte: Skip next instruction if Vx == kk
     fn op3XKK(self: *Chip8) void {
         const x: u8 = @as(u8, (self.opcode & 0x0F00) >> 8);
         const kk: u8 = @as(u8, self.opcode & 0x00FF);
@@ -162,5 +163,33 @@ pub const Chip8 = struct {
         if (self.registers[x] == kk) {
             self.pc += instruction_size;
         }
+    }
+
+    // 4XKK - SNE Vx, byte: Skip next instruction if Vx != kk
+    fn op4XKK(self: *Chip8) void {
+        const x: u8 = @as(u8, (self.opcode & 0x0F00) >> 8);
+        const kk: u8 = @as(u8, self.opcode & 0x00FF);
+
+        if (self.registers[x] != kk) {
+            self.pc += instruction_size;
+        }
+    }
+
+    // 5XY0 - SE Vx, Vy: Skip next instruction if Vx == Vy
+    fn op5XY0(self: *Chip8) void {
+        const x: u8 = @as(u8, (self.opcode & 0x0F00) >> 8);
+        const y: u8 = @as(u8, (self.opcode & 0x00F0) >> 4);
+
+        if (self.registers[x] == self.registers[y]) {
+            self.pc += instruction_size;
+        }
+    }
+
+    // 6XKK - LD Vx, byte: Set Vx = kk
+    fn op6XKK(self: *Chip8) void {
+        const x: u8 = @as(u8, (self.opcode & 0x0F00) >> 8);
+        const kk: u8 = @as(u8, self.opcode & 0x00FF);
+
+        self.registers[x] = kk;
     }
 };
