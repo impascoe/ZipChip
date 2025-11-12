@@ -1,6 +1,12 @@
 const std = @import("std");
 
+const ProcessingError = error{
+    StackUnderflow,
+    StackOverflow,
+};
+
 pub const Chip8 = struct {
+    const instruction_size: u16 = 2;
     const fontset_address: usize = 0x50;
     const start_address: usize = 0x200;
 
@@ -108,9 +114,13 @@ pub const Chip8 = struct {
     }
 
     // 00EE - RET: Return from a subroutine.
-    fn op00EE(self: *Chip8) void {
-        self.sp -= 1;
-        self.pc = self.stack[self.sp];
+    fn op00EE(self: *Chip8) ProcessingError!void {
+        if (self.sp == 0) {
+            return ProcessingError.StackUnderflow;
+        } else {
+            self.sp -= 1;
+            self.pc = self.stack[self.sp];
+        }
     }
 
     // 1NNN - JP to addr: Jump to NNN
@@ -120,11 +130,15 @@ pub const Chip8 = struct {
     }
 
     // 2NNN - CALL addr: Call subroutine at NNN
-    fn op2NNN(self: *Chip8) void {
-        const address: u16 = self.opcode & 0x0FFF;
-        self.pc += 2;
-        self.stack[self.sp] = self.pc;
-        self.sp += 1;
-        self.pc = address;
+    fn op2NNN(self: *Chip8) ProcessingError!void {
+        if (self.sp == self.stack.len) {
+            return ProcessingError.StackOverflow;
+        } else {
+            const address: u16 = self.opcode & 0x0FFF;
+            const next_pc = self.pc + instruction_size;
+            self.stack[self.sp] = next_pc;
+            self.sp += 1;
+            self.pc = address;
+        }
     }
 };
