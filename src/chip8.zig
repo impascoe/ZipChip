@@ -1,10 +1,5 @@
 const std = @import("std");
 
-const ProcessingError = error{
-    StackUnderflow,
-    StackOverflow,
-};
-
 pub const Chip8 = struct {
     const instruction_size: u16 = 2;
     const fontset_address: usize = 0x50;
@@ -128,13 +123,9 @@ pub const Chip8 = struct {
     }
 
     // 00EE - RET: Return from a subroutine.
-    fn op00EE(self: *Chip8) ProcessingError!void {
-        if (self.sp == 0) {
-            return ProcessingError.StackUnderflow;
-        } else {
-            self.sp -= 1;
-            self.pc = self.stack[self.sp];
-        }
+    fn op00EE(self: *Chip8) !void {
+        self.sp = try std.math.sub(u8, self.sp, 1);
+        self.pc = self.stack[self.sp];
     }
 
     // 1NNN - JP to addr: Jump to NNN
@@ -144,15 +135,11 @@ pub const Chip8 = struct {
     }
 
     // 2NNN - CALL addr: Call subroutine at NNN
-    fn op2NNN(self: *Chip8) ProcessingError!void {
-        if (self.sp == self.stack.len) {
-            return ProcessingError.StackOverflow;
-        } else {
-            const address: u16 = self.opcode & 0x0FFF;
-            self.stack[self.sp] = self.pc;
-            self.sp += 1;
-            self.pc = address;
-        }
+    fn op2NNN(self: *Chip8) !void {
+        const address: u16 = self.opcode & 0x0FFF;
+        self.stack[self.sp] = self.pc;
+        self.sp = try std.math.add(u8, self.sp, 1);
+        self.pc = address;
     }
 
     // 3XKK - SE Vx, byte: Skip next instruction if Vx == kk
@@ -191,5 +178,21 @@ pub const Chip8 = struct {
         const kk: u8 = @as(u8, self.opcode & 0x00FF);
 
         self.registers[x] = kk;
+    }
+
+    // 7XKK - LD Vx, byte: Set Vx += kk
+    fn op7XKK(self: *Chip8) void {
+        const x: u8 = @as(u8, (self.opcode & 0x0F00) >> 8);
+        const kk: u8 = @as(u8, self.opcode & 0x00FF);
+
+        self.registers[x] += kk;
+    }
+
+    // 8XY0 - SE Vx, Vy: Set Vx = Vy
+    fn op8XY0(self: *Chip8) void {
+        const x: u8 = @as(u8, (self.opcode & 0x0F00) >> 8);
+        const y: u8 = @as(u8, (self.opcode & 0x00F0) >> 4);
+
+        self.registers[x] = self.registers[y];
     }
 };

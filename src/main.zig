@@ -18,12 +18,8 @@ pub fn main() !void {
 
     while (true) {
         chip.emulateCycle() catch |err| switch (err) {
-            error.StackOverflow => {
+            error.Overflow => {
                 std.debug.print("Stack overflow occurred during emulation.\n", .{});
-                return;
-            },
-            error.StackUnderflow => {
-                std.debug.print("Stack underflow occurred during emulation.\n", .{});
                 return;
             },
             error.RomTooLarge => {
