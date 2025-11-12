@@ -234,4 +234,18 @@ pub const Chip8 = struct {
 
         self.registers[x] = ov[0] & 0xFF;
     }
+
+    // 8XY5 - SE Vx, Vy: Set Vx = Vx - Vy
+    fn op8XY5(self: *Chip8) void {
+        const x: u8 = @as(u8, (self.opcode & 0x0F00) >> 8);
+        const y: u8 = @as(u8, (self.opcode & 0x00F0) >> 4);
+
+        if (self.registers[x] > self.registers[y]) {
+            self.registers[0xF] = 1;
+        } else {
+            self.registers[0xF] = 0;
+        }
+
+        self.registers[x] -= self.registers[y];
+    }
 };
