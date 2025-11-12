@@ -101,9 +101,8 @@ pub const Chip8 = struct {
 
         try reader.interface.readSliceAll(rom);
 
-        var i: usize = 0;
-        while (i < rom.len) : (i += 1) {
-            self.memory[start_address + i] = rom[i];
+        for (rom, 0..) |b, i| {
+            self.memory[start_address + i] = b;
         }
     }
 
