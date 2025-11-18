@@ -308,4 +308,122 @@ pub const Chip8 = struct {
 
         self.registers[x] = getRandInt() & kk;
     }
+
+    // DXYN - DRW Vx, Vy, nibble: Display n-byte sprite starting at memory location I at (Vx, Vy), set VF = collision.
+    fn opDXYN(self: *Chip8) void {
+        const x: u8 = @as(u8, (self.opcode & 0x0F00) >> 8);
+        const y: u8 = @as(u8, (self.opcode & 0x00F0) >> 4);
+        const height: u8 = @as(u8, self.opcode & 0x000F);
+
+        const x_pos: u8 = self.registers[x] % 64;
+        const y_pos: u8 = self.registers[y] % 32;
+
+        self.registers[0xF] = 0;
+
+        for (height) |row| {
+            const sprite_byte = self.memory[self.index + @as(usize, row)];
+
+            for (8) |col| {
+                if ((sprite_byte & (0x80 >> col)) != 0) {
+                    const pixel_index = @as(usize, (x_pos + col) % 64 + ((y_pos + row) % 32) * 64);
+                    if (self.video[pixel_index] != 0) {
+                        self.registers[0xF] = 1;
+                    }
+                    self.video[pixel_index] ^= 0xFFFFFFFF;
+                }
+            }
+        }
+    }
+
+    // EX9E - SKP Vx: Skip next instruction if key with the value of Vx is pressed
+    fn opEX9E(self: *Chip8) void {
+        const x: u8 = @as(u8, (self.opcode & 0x0F00) >> 8);
+        const key: u8 = self.registers[x];
+
+        if (self.keypad[key] != 0) {
+            self.pc += instruction_size;
+        }
+    }
+
+    // EXA1 - SKNP Vx: Skip next instruction if key with the value of Vx is not pressed
+    fn opEXA1(self: *Chip8) void {
+        const x: u8 = @as(u8, (self.opcode & 0x0F00) >> 8);
+        const key: u8 = self.registers[x];
+
+        if (self.keypad[key] == 0) {
+            self.pc += instruction_size;
+        }
+    }
+
+    // FX07 - LD Vx, DT: Set Vx = delay timer value
+    fn opFX07(self: *Chip8) void {
+        const x: u8 = @as(u8, (self.opcode & 0x0F00) >> 8);
+        self.registers[x] = self.delay_timer;
+    }
+
+    // FX0A - LD Vx, K: Wait for a key press, store the value of the key in Vx
+    fn opFX0A(self: *Chip8) void {
+        const x: u8 = @as(u8, (self.opcode & 0x0F00) >> 8);
+
+        for (self.keypad) |value| {
+            if (value != 0) {
+                self.registers[x] = value;
+                return;
+            }
+        }
+        self.pc -= instruction_size;
+    }
+
+    // FX15 - LD DT, Vx: Set delay timer = Vx
+    fn opFX15(self: *Chip8) void {
+        const x: u8 = @as(u8, (self.opcode & 0x0F00) >> 8);
+        self.delay_timer = self.registers[x];
+    }
+
+    // FX18 - LD ST, Vx: Set sound timer = Vx
+    fn opFX18(self: *Chip8) void {
+        const x: u8 = @as(u8, (self.opcode & 0x0F00) >> 8);
+        self.sound_timer = self.registers[x];
+    }
+
+    // FX1E - ADD I, Vx: Set I = I + Vx
+    fn opFX1E(self: *Chip8) void {
+        const x: u8 = @as(u8, (self.opcode & 0x0F00) >> 8);
+        self.index += @as(u16, self.registers[x]);
+    }
+
+    // FX29 - LD F, Vx: Set I = location of sprite for digit Vx
+    fn opFX29(self: *Chip8) void {
+        const x: u8 = @as(u8, (self.opcode & 0x0F00) >> 8);
+        const digit: u8 = self.registers[x];
+        self.index = @as(u16, fontset_address + (digit * 5));
+    }
+
+    // FX33 - LD B, Vx: Store BCD representation of Vx in memory locations I, I+1, and I+2
+    fn opFX33(self: *Chip8) void {
+        const x: u8 = @as(u8, (self.opcode & 0x0F00) >> 8);
+        const value: u8 = self.registers[x];
+
+        self.memory[self.index] = value / 100;
+        self.memory[self.index + 1] = (value / 10) % 10;
+        self.memory[self.index + 2] = value % 10;
+    }
+
+    // FX55 - LD [I], Vx: Store registers V0 through Vx in memory starting at location I
+    fn opFX55(self: *Chip8) void {
+        const x: u8 = @as(u8, (self.opcode & 0x0F00) >> 8);
+
+        for (x + 1) |i| {
+            self.memory[self.index + @as(usize, i)] = self.registers[i];
+        }
+    }
+
+    // FX65 - LD Vx, [I]: Read registers V0 through Vx from memory starting at location I
+    fn opFX65(self: *Chip8) void {
+        const x: u8 = @as(u8, (self.opcode & 0x0F00) >> 8);
+
+        for (x + 1) |i| {
+            self.registers[i] = self.memory[self.index + @as(usize, i)];
+        }
+    }
 };
