@@ -102,7 +102,10 @@ pub const Chip8 = struct {
     }
 
     pub fn emulateCycle(self: *Chip8) !void {
-        const current_pc = self.pc;
+        const current_pc: usize = @intCast(self.pc);
+        if (current_pc + 1 >= self.memory.len) {
+            return error.PcOutOfBounds;
+        }
 
         // get opcode
         const hi_byte = self.memory[current_pc];
@@ -114,12 +117,28 @@ pub const Chip8 = struct {
         self.pc += instruction_size;
 
         // execute opcode
+        try runOpcode(self);
+    }
+
+    fn runOpcode(self: *Chip8) !void {
+        switch (self.opcode & 0xF000) {
+            0x0000 => {
+                switch (self.opcode & 0x00FF) {
+                    0x00E0 => self.op00E0(),
+                    0x00EE => self.op00EE() catch {
+                        return error.Overflow;
+                    },
+                    else => {},
+                }
+            },
+            else => {},
+        }
     }
 
     // Instructions
     // 00E0 - CLS: Clear the display by pushing zeroes to display.
     fn op00E0(self: *Chip8) void {
-        @memset(self.video, 0);
+        @memset(self.video[0..], 0);
     }
 
     // 00EE - RET: Return from a subroutine.
@@ -268,7 +287,7 @@ pub const Chip8 = struct {
             self.registers[0xF] = 0;
         }
 
-        self.registers[y] -= self.registers[x];
+        self.registers[x] = self.registers[y] - self.registers[x];
     }
 
     // 8XYE - SE Vx, Vy: Set Vx = Vx SHL 1
@@ -320,10 +339,10 @@ pub const Chip8 = struct {
 
         self.registers[0xF] = 0;
 
-        for (height) |row| {
+        for (0..@as(usize, height)) |row| {
             const sprite_byte = self.memory[self.index + @as(usize, row)];
 
-            for (8) |col| {
+            for (0..8) |col| {
                 if ((sprite_byte & (0x80 >> col)) != 0) {
                     const pixel_index = @as(usize, (x_pos + col) % 64 + ((y_pos + row) % 32) * 64);
                     if (self.video[pixel_index] != 0) {
@@ -338,7 +357,7 @@ pub const Chip8 = struct {
     // EX9E - SKP Vx: Skip next instruction if key with the value of Vx is pressed
     fn opEX9E(self: *Chip8) void {
         const x: u8 = @as(u8, (self.opcode & 0x0F00) >> 8);
-        const key: u8 = self.registers[x];
+        const key: u8 = self.registers[x] & 0x0F;
 
         if (self.keypad[key] != 0) {
             self.pc += instruction_size;
@@ -348,7 +367,7 @@ pub const Chip8 = struct {
     // EXA1 - SKNP Vx: Skip next instruction if key with the value of Vx is not pressed
     fn opEXA1(self: *Chip8) void {
         const x: u8 = @as(u8, (self.opcode & 0x0F00) >> 8);
-        const key: u8 = self.registers[x];
+        const key: u8 = self.registers[x] & 0x0F;
 
         if (self.keypad[key] == 0) {
             self.pc += instruction_size;
