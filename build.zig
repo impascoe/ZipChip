@@ -24,6 +24,20 @@ pub fn build(b: *std.Build) void {
         }),
     });
 
+    const raylib_dep = b.dependency("raylib_zig", .{
+        .target = target,
+        .optimize = optimize,
+        .linkage = .dynamic,
+    });
+
+    const raylib = raylib_dep.module("raylib"); // main raylib module
+    const raygui = raylib_dep.module("raygui"); // raygui module
+    const raylib_artifact = raylib_dep.artifact("raylib"); // raylib C library
+
+    exe.linkLibrary(raylib_artifact);
+    exe.root_module.addImport("raylib", raylib);
+    exe.root_module.addImport("raygui", raygui);
+
     // Make sure tests always build newest so they are not cached
     const run_tests = b.addRunArtifact(tests);
     run_tests.has_side_effects = false;

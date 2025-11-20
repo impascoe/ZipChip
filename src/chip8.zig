@@ -112,12 +112,24 @@ pub const Chip8 = struct {
         const lo_byte = self.memory[current_pc + 1];
 
         self.opcode = (@as(u16, hi_byte) << 8) | @as(u16, lo_byte);
-
+        std.debug.print("Debug: Opcode called: 0x{X}\n", .{self.opcode});
         // advance pc by default
         self.pc += instruction_size;
 
         // execute opcode
         try runOpcode(self);
+
+        // update timers
+        if (self.delay_timer > 0) {
+            self.delay_timer -= 1;
+        }
+
+        if (self.sound_timer > 0) {
+            if (self.sound_timer == 1) {
+                // Beep sound can be implemented here.
+            }
+            self.sound_timer -= 1;
+        }
     }
 
     fn runOpcode(self: *Chip8) !void {
@@ -128,10 +140,67 @@ pub const Chip8 = struct {
                     0x00EE => self.op00EE() catch {
                         return error.Overflow;
                     },
+                    else => {
+                        return error.UnknownOpcode;
+                    },
+                }
+            },
+            0x8000 => {
+                switch (self.opcode & 0x000F) {
+                    0x0000 => self.op8XY0(),
+                    0x0001 => self.op8XY1(),
+                    0x0002 => self.op8XY2(),
+                    0x0003 => self.op8XY3(),
+                    0x0004 => self.op8XY4(),
+                    0x0005 => self.op8XY5(),
+                    0x0006 => self.op8XY6(),
+                    0x0007 => self.op8XY7(),
+                    0x000E => self.op8XYE(),
+                    else => {
+                        return error.UnknownOpcode;
+                    },
+                }
+            },
+            0xE000 => {
+                switch (self.opcode & 0x00FF) {
+                    0x009E => self.opEX9E(),
+                    0x00A1 => self.opEXA1(),
                     else => {},
                 }
             },
-            else => {},
+            0xF000 => {
+                switch (self.opcode & 0x00FF) {
+                    0x0007 => self.opFX07(),
+                    0x000A => self.opFX0A(),
+                    0x0015 => self.opFX15(),
+                    0x0018 => self.opFX18(),
+                    0x001E => self.opFX1E(),
+                    0x0029 => self.opFX29(),
+                    0x0033 => self.opFX33(),
+                    0x0055 => self.opFX55(),
+                    0x0065 => self.opFX65(),
+                    else => {
+                        return error.UnknownOpcode;
+                    },
+                }
+            },
+            0x1000 => self.op1NNN(),
+            0x2000 => self.op2NNN() catch {
+                return error.Overflow;
+            },
+            0x3000 => self.op3XKK(),
+            0x4000 => self.op4XKK(),
+            0x5000 => self.op5XY0(),
+            0x6000 => self.op6XKK(),
+            0x7000 => self.op7XKK(),
+            0x9000 => self.op9XY0(),
+            0xA000 => self.opANNN(),
+            0xB000 => self.opBNNN(),
+            0xC000 => self.opCXKK(),
+            0xD000 => self.opDXYN(),
+            else => {
+                return error.UnknownOpcode;
+            },
         }
     }
 
@@ -163,8 +232,8 @@ pub const Chip8 = struct {
 
     // 3XKK - SE Vx, byte: Skip next instruction if Vx == kk
     fn op3XKK(self: *Chip8) void {
-        const x: u8 = @as(u8, (self.opcode & 0x0F00) >> 8);
-        const kk: u8 = @as(u8, self.opcode & 0x00FF);
+        const x: u8 = @intCast((self.opcode & 0x0F00) >> 8);
+        const kk: u8 = @intCast(self.opcode & 0x00FF);
 
         if (self.registers[x] == kk) {
             self.pc += instruction_size;
@@ -173,8 +242,8 @@ pub const Chip8 = struct {
 
     // 4XKK - SNE Vx, byte: Skip next instruction if Vx != kk
     fn op4XKK(self: *Chip8) void {
-        const x: u8 = @as(u8, (self.opcode & 0x0F00) >> 8);
-        const kk: u8 = @as(u8, self.opcode & 0x00FF);
+        const x: u8 = @intCast((self.opcode & 0x0F00) >> 8);
+        const kk: u8 = @intCast(self.opcode & 0x00FF);
 
         if (self.registers[x] != kk) {
             self.pc += instruction_size;
@@ -183,8 +252,8 @@ pub const Chip8 = struct {
 
     // 5XY0 - SE Vx, Vy: Skip next instruction if Vx == Vy
     fn op5XY0(self: *Chip8) void {
-        const x: u8 = @as(u8, (self.opcode & 0x0F00) >> 8);
-        const y: u8 = @as(u8, (self.opcode & 0x00F0) >> 4);
+        const x: u8 = @intCast((self.opcode & 0x0F00) >> 8);
+        const y: u8 = @intCast((self.opcode & 0x00F0) >> 4);
 
         if (self.registers[x] == self.registers[y]) {
             self.pc += instruction_size;
@@ -193,56 +262,56 @@ pub const Chip8 = struct {
 
     // 6XKK - LD Vx, byte: Set Vx = kk
     fn op6XKK(self: *Chip8) void {
-        const x: u8 = @as(u8, (self.opcode & 0x0F00) >> 8);
-        const kk: u8 = @as(u8, self.opcode & 0x00FF);
+        const x: u8 = @intCast((self.opcode & 0x0F00) >> 8);
+        const kk: u8 = @intCast(self.opcode & 0x00FF);
 
         self.registers[x] = kk;
     }
 
     // 7XKK - LD Vx, byte: Set Vx += kk
     fn op7XKK(self: *Chip8) void {
-        const x: u8 = @as(u8, (self.opcode & 0x0F00) >> 8);
-        const kk: u8 = @as(u8, self.opcode & 0x00FF);
+        const x: u8 = @intCast((self.opcode & 0x0F00) >> 8);
+        const kk: u8 = @intCast(self.opcode & 0x00FF);
 
         self.registers[x] += kk;
     }
 
     // 8XY0 - SE Vx, Vy: Set Vx = Vy
     fn op8XY0(self: *Chip8) void {
-        const x: u8 = @as(u8, (self.opcode & 0x0F00) >> 8);
-        const y: u8 = @as(u8, (self.opcode & 0x00F0) >> 4);
+        const x: u8 = @intCast((self.opcode & 0x0F00) >> 8);
+        const y: u8 = @intCast((self.opcode & 0x00F0) >> 4);
 
         self.registers[x] = self.registers[y];
     }
 
     // 8XY1 - SE Vx, Vy: Set Vx = Vx OR Vy
     fn op8XY1(self: *Chip8) void {
-        const x: u8 = @as(u8, (self.opcode & 0x0F00) >> 8);
-        const y: u8 = @as(u8, (self.opcode & 0x00F0) >> 4);
+        const x: u8 = @intCast((self.opcode & 0x0F00) >> 8);
+        const y: u8 = @intCast((self.opcode & 0x00F0) >> 4);
 
         self.registers[x] |= self.registers[y];
     }
 
     // 8XY2 - SE Vx, Vy: Set Vx = Vx AND Vy
     fn op8XY2(self: *Chip8) void {
-        const x: u8 = @as(u8, (self.opcode & 0x0F00) >> 8);
-        const y: u8 = @as(u8, (self.opcode & 0x00F0) >> 4);
+        const x: u8 = @intCast((self.opcode & 0x0F00) >> 8);
+        const y: u8 = @intCast((self.opcode & 0x00F0) >> 4);
 
         self.registers[x] &= self.registers[y];
     }
 
     // 8XY3 - SE Vx, Vy: Set Vx = Vx OR Vy
     fn op8XY3(self: *Chip8) void {
-        const x: u8 = @as(u8, (self.opcode & 0x0F00) >> 8);
-        const y: u8 = @as(u8, (self.opcode & 0x00F0) >> 4);
+        const x: u8 = @intCast((self.opcode & 0x0F00) >> 8);
+        const y: u8 = @intCast((self.opcode & 0x00F0) >> 4);
 
         self.registers[x] ^= self.registers[y];
     }
 
     // 8XY4 - SE Vx, Vy: Set Vx = Vx + Vy
     fn op8XY4(self: *Chip8) void {
-        const x: u8 = @as(u8, (self.opcode & 0x0F00) >> 8);
-        const y: u8 = @as(u8, (self.opcode & 0x00F0) >> 4);
+        const x: u8 = @intCast((self.opcode & 0x0F00) >> 8);
+        const y: u8 = @intCast((self.opcode & 0x00F0) >> 4);
 
         const ov = @addWithOverflow(self.registers[x], self.registers[y]);
         if (ov[1] != 0) {
@@ -256,8 +325,8 @@ pub const Chip8 = struct {
 
     // 8XY5 - SE Vx, Vy: Set Vx = Vx - Vy
     fn op8XY5(self: *Chip8) void {
-        const x: u8 = @as(u8, (self.opcode & 0x0F00) >> 8);
-        const y: u8 = @as(u8, (self.opcode & 0x00F0) >> 4);
+        const x: u8 = @intCast((self.opcode & 0x0F00) >> 8);
+        const y: u8 = @intCast((self.opcode & 0x00F0) >> 4);
 
         if (self.registers[x] > self.registers[y]) {
             self.registers[0xF] = 1;
@@ -270,7 +339,7 @@ pub const Chip8 = struct {
 
     // 8XY6 - SE Vx, Vy: Set Vx = Vx SHR 1
     fn op8XY6(self: *Chip8) void {
-        const x: u8 = @as(u8, (self.opcode & 0x0F00) >> 8);
+        const x: u8 = @intCast((self.opcode & 0x0F00) >> 8);
 
         self.registers[0xF] = self.registers[x] & 0x1;
         self.registers[x] >>= 1;
@@ -278,8 +347,8 @@ pub const Chip8 = struct {
 
     // 8XY7 - SE Vx, Vy: Set Vx = Vx - Vy
     fn op8XY7(self: *Chip8) void {
-        const x: u8 = @as(u8, (self.opcode & 0x0F00) >> 8);
-        const y: u8 = @as(u8, (self.opcode & 0x00F0) >> 4);
+        const x: u8 = @intCast((self.opcode & 0x0F00) >> 8);
+        const y: u8 = @intCast((self.opcode & 0x00F0) >> 4);
 
         if (self.registers[y] > self.registers[x]) {
             self.registers[0xF] = 1;
@@ -292,7 +361,7 @@ pub const Chip8 = struct {
 
     // 8XYE - SE Vx, Vy: Set Vx = Vx SHL 1
     fn op8XYE(self: *Chip8) void {
-        const x: u8 = @as(u8, (self.opcode & 0x0F00) >> 8);
+        const x: u8 = @intCast((self.opcode & 0x0F00) >> 8);
 
         self.registers[0xF] = (self.registers[x] & 0x80) >> 7;
         self.registers[x] <<= 1;
@@ -300,8 +369,8 @@ pub const Chip8 = struct {
 
     // 9XY0 - SNE Vx, Vy: Skip next instruction if Vx != Vy
     fn op9XY0(self: *Chip8) void {
-        const x: u8 = @as(u8, (self.opcode & 0x0F00) >> 8);
-        const y: u8 = @as(u8, (self.opcode & 0x00F0) >> 4);
+        const x: u8 = @intCast((self.opcode & 0x0F00) >> 8);
+        const y: u8 = @intCast((self.opcode & 0x00F0) >> 4);
 
         if (self.registers[x] != self.registers[y]) {
             self.pc += instruction_size;
@@ -322,17 +391,17 @@ pub const Chip8 = struct {
 
     // CXKK - RND Vx, byte: Set Vx = random byte AND kk
     fn opCXKK(self: *Chip8) void {
-        const x: u8 = @as(u8, (self.opcode & 0x0F00) >> 8);
-        const kk: u8 = @as(u8, self.opcode & 0x00FF);
+        const x: u8 = @intCast((self.opcode & 0x0F00) >> 8);
+        const kk: u8 = @intCast(self.opcode & 0x00FF);
 
         self.registers[x] = getRandInt() & kk;
     }
 
     // DXYN - DRW Vx, Vy, nibble: Display n-byte sprite starting at memory location I at (Vx, Vy), set VF = collision.
     fn opDXYN(self: *Chip8) void {
-        const x: u8 = @as(u8, (self.opcode & 0x0F00) >> 8);
-        const y: u8 = @as(u8, (self.opcode & 0x00F0) >> 4);
-        const height: u8 = @as(u8, self.opcode & 0x000F);
+        const x: u8 = @intCast((self.opcode & 0x0F00) >> 8);
+        const y: u8 = @intCast((self.opcode & 0x00F0) >> 4);
+        const height: u8 = @intCast(self.opcode & 0x000F);
 
         const x_pos: u8 = self.registers[x] % 64;
         const y_pos: u8 = self.registers[y] % 32;
@@ -340,10 +409,11 @@ pub const Chip8 = struct {
         self.registers[0xF] = 0;
 
         for (0..@as(usize, height)) |row| {
-            const sprite_byte = self.memory[self.index + @as(usize, row)];
+            const sprite_byte = self.memory[self.index + row];
 
             for (0..8) |col| {
-                if ((sprite_byte & (0x80 >> col)) != 0) {
+                const mask: u8 = @as(u8, 0x80) >> @intCast(col); // col is 0..7
+                if ((sprite_byte & mask) != 0) {
                     const pixel_index = @as(usize, (x_pos + col) % 64 + ((y_pos + row) % 32) * 64);
                     if (self.video[pixel_index] != 0) {
                         self.registers[0xF] = 1;
@@ -356,7 +426,7 @@ pub const Chip8 = struct {
 
     // EX9E - SKP Vx: Skip next instruction if key with the value of Vx is pressed
     fn opEX9E(self: *Chip8) void {
-        const x: u8 = @as(u8, (self.opcode & 0x0F00) >> 8);
+        const x: u8 = @intCast((self.opcode & 0x0F00) >> 8);
         const key: u8 = self.registers[x] & 0x0F;
 
         if (self.keypad[key] != 0) {
@@ -366,7 +436,7 @@ pub const Chip8 = struct {
 
     // EXA1 - SKNP Vx: Skip next instruction if key with the value of Vx is not pressed
     fn opEXA1(self: *Chip8) void {
-        const x: u8 = @as(u8, (self.opcode & 0x0F00) >> 8);
+        const x: u8 = @intCast((self.opcode & 0x0F00) >> 8);
         const key: u8 = self.registers[x] & 0x0F;
 
         if (self.keypad[key] == 0) {
@@ -376,13 +446,13 @@ pub const Chip8 = struct {
 
     // FX07 - LD Vx, DT: Set Vx = delay timer value
     fn opFX07(self: *Chip8) void {
-        const x: u8 = @as(u8, (self.opcode & 0x0F00) >> 8);
+        const x: u8 = @intCast((self.opcode & 0x0F00) >> 8);
         self.registers[x] = self.delay_timer;
     }
 
     // FX0A - LD Vx, K: Wait for a key press, store the value of the key in Vx
     fn opFX0A(self: *Chip8) void {
-        const x: u8 = @as(u8, (self.opcode & 0x0F00) >> 8);
+        const x: u8 = @intCast((self.opcode & 0x0F00) >> 8);
 
         for (self.keypad) |value| {
             if (value != 0) {
@@ -395,32 +465,32 @@ pub const Chip8 = struct {
 
     // FX15 - LD DT, Vx: Set delay timer = Vx
     fn opFX15(self: *Chip8) void {
-        const x: u8 = @as(u8, (self.opcode & 0x0F00) >> 8);
+        const x: u8 = @intCast((self.opcode & 0x0F00) >> 8);
         self.delay_timer = self.registers[x];
     }
 
     // FX18 - LD ST, Vx: Set sound timer = Vx
     fn opFX18(self: *Chip8) void {
-        const x: u8 = @as(u8, (self.opcode & 0x0F00) >> 8);
+        const x: u8 = @intCast((self.opcode & 0x0F00) >> 8);
         self.sound_timer = self.registers[x];
     }
 
     // FX1E - ADD I, Vx: Set I = I + Vx
     fn opFX1E(self: *Chip8) void {
-        const x: u8 = @as(u8, (self.opcode & 0x0F00) >> 8);
+        const x: u8 = @intCast((self.opcode & 0x0F00) >> 8);
         self.index += @as(u16, self.registers[x]);
     }
 
     // FX29 - LD F, Vx: Set I = location of sprite for digit Vx
     fn opFX29(self: *Chip8) void {
-        const x: u8 = @as(u8, (self.opcode & 0x0F00) >> 8);
+        const x: u8 = @intCast((self.opcode & 0x0F00) >> 8);
         const digit: u8 = self.registers[x];
-        self.index = @as(u16, fontset_address + (digit * 5));
+        self.index = @intCast(fontset_address + (digit * 5));
     }
 
     // FX33 - LD B, Vx: Store BCD representation of Vx in memory locations I, I+1, and I+2
     fn opFX33(self: *Chip8) void {
-        const x: u8 = @as(u8, (self.opcode & 0x0F00) >> 8);
+        const x: u8 = @intCast((self.opcode & 0x0F00) >> 8);
         const value: u8 = self.registers[x];
 
         self.memory[self.index] = value / 100;
@@ -430,18 +500,18 @@ pub const Chip8 = struct {
 
     // FX55 - LD [I], Vx: Store registers V0 through Vx in memory starting at location I
     fn opFX55(self: *Chip8) void {
-        const x: u8 = @as(u8, (self.opcode & 0x0F00) >> 8);
+        const x: u8 = @intCast((self.opcode & 0x0F00) >> 8);
 
-        for (x + 1) |i| {
+        for (0..x + 1) |i| {
             self.memory[self.index + @as(usize, i)] = self.registers[i];
         }
     }
 
     // FX65 - LD Vx, [I]: Read registers V0 through Vx from memory starting at location I
     fn opFX65(self: *Chip8) void {
-        const x: u8 = @as(u8, (self.opcode & 0x0F00) >> 8);
+        const x: u8 = @intCast((self.opcode & 0x0F00) >> 8);
 
-        for (x + 1) |i| {
+        for (0..x + 1) |i| {
             self.registers[i] = self.memory[self.index + @as(usize, i)];
         }
     }

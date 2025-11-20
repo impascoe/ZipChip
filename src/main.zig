@@ -1,4 +1,7 @@
 const std = @import("std");
+const rl = @import("raylib");
+const rg = @import("raygui");
+
 const chip8 = @import("chip8.zig").Chip8;
 
 pub fn main() !void {
@@ -17,11 +20,19 @@ pub fn main() !void {
         return;
     };
 
-    while (true) {
+    var i: u32 = 0;
+    while (i < 40) : (i += 1) {
         chip.emulateCycle() catch |err| {
             std.debug.print("Emulation cycle failed. Error: {}\n", .{err});
             return;
         };
-        // add timing control here.
     }
+
+    // while (true) {
+    //     chip.emulateCycle() catch |err| {
+    //         std.debug.print("Emulation cycle failed. Error: {}\n", .{err});
+    //         return;
+    //     };
+    //     // add timing control here.
+    // }
 }
