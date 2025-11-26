@@ -1,6 +1,9 @@
 const std = @import("std");
 
 pub const Chip8 = struct {
+    const VIDEO_WIDTH: usize = 64;
+    const VIDEO_HEIGHT: usize = 32;
+
     const instruction_size: u16 = 2;
     const fontset_address: usize = 0x50;
     const start_address: usize = 0x200;
