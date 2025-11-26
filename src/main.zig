@@ -72,5 +72,43 @@ fn render(chip: *chip8, scale: usize) void {
 
             rl.drawRectangle(x, y, @intCast(pixel_size), @intCast(pixel_size), rl.Color.black);
         }
+
+        handleInput(chip);
     }
+}
+
+fn handleInput(chip: *chip8) void {
+    if (rl.isKeyDown(rl.KeyboardKey.one)) chip.keypad[0x1] = 1;
+    if (rl.isKeyDown(rl.KeyboardKey.two)) chip.keypad[0x2] = 1;
+    if (rl.isKeyDown(rl.KeyboardKey.three)) chip.keypad[0x3] = 1;
+    if (rl.isKeyDown(rl.KeyboardKey.four)) chip.keypad[0xC] = 1;
+    if (rl.isKeyDown(rl.KeyboardKey.q)) chip.keypad[0x4] = 1;
+    if (rl.isKeyDown(rl.KeyboardKey.w)) chip.keypad[0x5] = 1;
+    if (rl.isKeyDown(rl.KeyboardKey.e)) chip.keypad[0x6] = 1;
+    if (rl.isKeyDown(rl.KeyboardKey.r)) chip.keypad[0xD] = 1;
+    if (rl.isKeyDown(rl.KeyboardKey.a)) chip.keypad[0x7] = 1;
+    if (rl.isKeyDown(rl.KeyboardKey.s)) chip.keypad[0x8] = 1;
+    if (rl.isKeyDown(rl.KeyboardKey.d)) chip.keypad[0x9] = 1;
+    if (rl.isKeyDown(rl.KeyboardKey.f)) chip.keypad[0xE] = 1;
+    if (rl.isKeyDown(rl.KeyboardKey.z)) chip.keypad[0xA] = 1;
+    if (rl.isKeyDown(rl.KeyboardKey.x)) chip.keypad[0x0] = 1;
+    if (rl.isKeyDown(rl.KeyboardKey.c)) chip.keypad[0xB] = 1;
+    if (rl.isKeyDown(rl.KeyboardKey.v)) chip.keypad[0xF] = 1;
+
+    if (rl.isKeyUp(rl.KeyboardKey.one)) chip.keypad[0x1] = 0;
+    if (rl.isKeyUp(rl.KeyboardKey.two)) chip.keypad[0x2] = 0;
+    if (rl.isKeyUp(rl.KeyboardKey.three)) chip.keypad[0x3] = 0;
+    if (rl.isKeyUp(rl.KeyboardKey.four)) chip.keypad[0xC] = 0;
+    if (rl.isKeyUp(rl.KeyboardKey.q)) chip.keypad[0x4] = 0;
+    if (rl.isKeyUp(rl.KeyboardKey.w)) chip.keypad[0x5] = 0;
+    if (rl.isKeyUp(rl.KeyboardKey.e)) chip.keypad[0x6] = 0;
+    if (rl.isKeyUp(rl.KeyboardKey.r)) chip.keypad[0xD] = 0;
+    if (rl.isKeyUp(rl.KeyboardKey.a)) chip.keypad[0x7] = 0;
+    if (rl.isKeyUp(rl.KeyboardKey.s)) chip.keypad[0x8] = 0;
+    if (rl.isKeyUp(rl.KeyboardKey.d)) chip.keypad[0x9] = 0;
+    if (rl.isKeyUp(rl.KeyboardKey.f)) chip.keypad[0xE] = 0;
+    if (rl.isKeyUp(rl.KeyboardKey.z)) chip.keypad[0xA] = 0;
+    if (rl.isKeyUp(rl.KeyboardKey.x)) chip.keypad[0x0] = 0;
+    if (rl.isKeyUp(rl.KeyboardKey.c)) chip.keypad[0xB] = 0;
+    if (rl.isKeyUp(rl.KeyboardKey.v)) chip.keypad[0xF] = 0;
 }
