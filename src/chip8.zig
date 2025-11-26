@@ -271,12 +271,12 @@ pub const Chip8 = struct {
         self.registers[x] = kk;
     }
 
-    // 7XKK - LD Vx, byte: Set Vx += kk
+    // 7XKK - ADD Vx, byte: Set Vx += kk
     fn op7XKK(self: *Chip8) void {
         const x: u8 = @intCast((self.opcode & 0x0F00) >> 8);
         const kk: u8 = @intCast(self.opcode & 0x00FF);
 
-        self.registers[x] += kk;
+        self.registers[x] = self.registers[x] +% kk;
     }
 
     // 8XY0 - SE Vx, Vy: Set Vx = Vy
@@ -337,7 +337,7 @@ pub const Chip8 = struct {
             self.registers[0xF] = 0;
         }
 
-        self.registers[x] -= self.registers[y];
+        self.registers[x] = self.registers[x] -% self.registers[y];
     }
 
     // 8XY6 - SE Vx, Vy: Set Vx = Vx SHR 1
@@ -359,7 +359,7 @@ pub const Chip8 = struct {
             self.registers[0xF] = 0;
         }
 
-        self.registers[x] = self.registers[y] - self.registers[x];
+        self.registers[x] = self.registers[y] -% self.registers[x];
     }
 
     // 8XYE - SE Vx, Vy: Set Vx = Vx SHL 1
