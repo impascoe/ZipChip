@@ -46,18 +46,37 @@ pub fn main() !void {
 }
 
 fn render(chip: *chip8, scale: usize) void {
+    const target_instructions_per_second: usize = 500;
+    const target_timer_hz: usize = 60;
+
     const pixel_size: usize = scale;
+
+    const ns_per_s = std.time.ns_per_s;
+    const instr_interval_ns: usize = @intCast(ns_per_s / target_instructions_per_second);
+    const timer_interval_ns: usize = @intCast(ns_per_s / target_timer_hz);
 
     rl.initWindow(@intCast(VIDEO_WIDTH * pixel_size), @intCast(VIDEO_HEIGHT * pixel_size), "ZipChip Emulator");
     defer rl.closeWindow();
 
     rl.setTargetFPS(60);
 
+    var last_instr_ns = std.time.nanoTimestamp();
+    var last_timer_ns = last_instr_ns;
+
     while (!rl.windowShouldClose()) {
-        chip.emulateCycle() catch |err| {
-            std.debug.print("Emulation cycle failed. Error: {}\n", .{err});
-            return;
-        };
+        const now = std.time.nanoTimestamp();
+
+        while (now - last_timer_ns >= timer_interval_ns) : (last_timer_ns += timer_interval_ns) {
+            if (chip.delay_timer > 0) chip.delay_timer -= 1;
+            if (chip.sound_timer > 0) chip.sound_timer -= 1;
+        }
+
+        while (now - last_instr_ns >= instr_interval_ns) : (last_instr_ns += instr_interval_ns) {
+            chip.emulateCycle() catch |err| {
+                std.debug.print("Emulation cycle failed. Error: {}\n", .{err});
+                return;
+            };
+        }
 
         rl.beginDrawing();
         defer rl.endDrawing();

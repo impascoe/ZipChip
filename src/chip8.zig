@@ -121,18 +121,6 @@ pub const Chip8 = struct {
 
         // execute opcode
         try runOpcode(self);
-
-        // update timers
-        if (self.delay_timer > 0) {
-            self.delay_timer -= 1;
-        }
-
-        if (self.sound_timer > 0) {
-            if (self.sound_timer == 1) {
-                // Beep sound can be implemented here.
-            }
-            self.sound_timer -= 1;
-        }
     }
 
     fn runOpcode(self: *Chip8) !void {
