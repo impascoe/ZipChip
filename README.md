@@ -1,71 +1,88 @@
 # ZipChip
 
-ZipChip is a work-in-progress [CHIP-8](https://en.wikipedia.org/wiki/CHIP-8) emulator written in [Zig](https://ziglang.org/). The goal of the project is to explore emulator design in a modern systems language while keeping the codebase approachable for learners interested in low-level development, virtual machines, and Zig itself.
+ZipChip is a [CHIP-8](https://en.wikipedia.org/wiki/CHIP-8) emulator written in [Zig](https://ziglang.org/) with a real-time renderer powered by [raylib](https://www.raylib.com/). The project is an exploration of emulator architecture in a modern systems language while keeping the code approachable for learners interested in virtual machines, graphics loops, and systems programming.
 
 ---
 
-## Features
+## Current Status
 
-- ✅ **Core virtual machine state**: 16 general-purpose registers, index register, stack, program counter, timers, and keypad state.
-- ✅ **Memory initialization**: Fonts are preloaded at the canonical address `0x50`, with program memory beginning at `0x200`.
-- ✅ **ROM loading pipeline**: Reads `.c8` binaries into the interpreter memory space with bounds validation.
-- ✅ **Instruction scaffolding**: Implementations for `CLS`, `RET`, `JP`, and `CALL` opcodes as a foundation for the remaining instruction set.
-- ✅ **Arena-backed allocations**: Uses `std.heap.ArenaAllocator` to make memory management explicit and easy to reason about.
-
-> The emulator currently focuses on correctness and architecture; a renderer, input handling, and the full opcode matrix are on the roadmap.
+- The virtual machine boots with the canonical fontset, loads CHIP-8 binaries into memory, and steps through a large subset of the instruction matrix.
+- A raylib-backed window displays the 64×32 monochrome framebuffer at an arbitrary integer scale.
+- Keyboard events are mapped to the CHIP-8 hexadecimal keypad layout.
+- Delay and sound timers tick at 60 Hz, while the CPU targets 500 instructions per second.
+- Opcode debugging is enabled to help trace execution while the instruction coverage is finalized.
 
 ---
 
-## Getting Started
+## Implemented Features
 
-### Prerequisites
+- ✅ **Complete VM state initialization**: 16 general-purpose registers, index register, stack pointer, timers, keypad, and 4 KB memory map seeded with the standard fontset at `0x50`.
+- ✅ **ROM loader with bounds checking**: Streams `.c8` binaries into interpreter memory starting at `0x200`, validating file size before allocation.
+- ✅ **Arena-backed allocations**: Uses `std.heap.ArenaAllocator` to make lifetime management explicit and deterministic.
+- ✅ **Opcode execution core**: Implements the majority of the CHIP-8 instruction set, including:
+  - Flow control (`CLS`, `RET`, `JP`, `CALL`, `SE`, `SNE`, `SKP`, `SKNP`)
+  - Register operations (`LD`, arithmetic/logic, bit shifts, BCD, bulk memory transfers)
+  - Graphics drawing (`DRW`) with collision detection
+  - Timers and random number generation (`LD DT/ST`, `RND`)
+- ✅ **Timing & rendering loop**: Synchronizes CPU and timer cadence independently and draws the framebuffer every frame.
+- ✅ **Keyboard input mapping**: Translates PC keyboard keys (`1`–`4`, `Q`–`V`) to the CHIP-8 keypad (`0x0`–`0xF`).
 
-- Zig `0.15.2` or newer (matches the project’s `build.zig.zon` minimum)
-- A CHIP-8 ROM (`.c8` file) to experiment with
+---
 
-You can verify your Zig installation with:
+## Prerequisites
+
+- **Zig** `0.15.2` or newer (matches the project’s `build.zig.zon`)
+- **raylib** development libraries installed on your system
+  - On Linux you can typically install via your package manager (e.g., `sudo pacman -S raylib` or `sudo apt install libraylib-dev`)
+  - Ensure the headers and library files are discoverable by your compiler/linker
+
+---
+
+## Building
 
 ``` bash
-zig version
-```
-
-### Build
-
-``` bash
-cd ZipChip
 zig build
 ```
 
-This command compiles the executable and installs it into `zig-out/bin/ZipChip`.
+This command produces the emulator binary at `zig-out/bin/ZipChip`.
 
-### Run
+---
 
-``` bash
-cd ZipChip
-zig build run
-```
+## Running
 
-The current entry point prints a diagnostic message and attempts to load a placeholder ROM (`dummy.c8`). Replace this with an actual ROM path as the emulator matures.
-
-### Test
+Execute the built binary directly or forward arguments through `zig build run`:
 
 ``` bash
-cd ZipChip
-zig build test
+./zig-out/bin/ZipChip <scale> <path-to-rom>
+# or
+zig build run -- <scale> <path-to-rom>
 ```
 
-The test suite bootstraps `src/main.zig` and ensures the codebase is free of compile-time regressions. As additional functionality lands, this will expand to include opcode and system-level tests.
+- `<scale>` is an integer pixel multiplier (e.g., `10` for a 640×320 window).
+- `<path-to-rom>` is the path to a CHIP-8 ROM file (`.c8`).
+
+If the emulator cannot parse the scale or locate the ROM, it prints a diagnostic message and exits gracefully.
+
+---
+
+## Controls
+
+| CHIP-8 Key | Keyboard |
+| ---------- | -------- |
+| `0x1 0x2 0x3 0xC` | `1 2 3 4` |
+| `0x4 0x5 0x6 0xD` | `Q W E R` |
+| `0x7 0x8 0x9 0xE` | `A S D F` |
+| `0xA 0x0 0xB 0xF` | `Z X C V` |
 
 ---
 
 ## Project Layout
 
-``` bash
+```text
 ZipChip/
 ├── src/
-│   ├── main.zig      # Application entry point
-│   ├── chip8.zig     # Emulator core implementation
-│   └── tests.zig     # Aggregated test entry
+│   ├── main.zig      # Application entry point, renderer, and input loop
+│   └── chip8.zig     # Emulator core, memory, and opcode implementations
 ├── build.zig         # Zig build pipeline
 ├── build.zig.zon     # Package metadata (name, version, dependencies)
 ├── LICENSE           # MIT license
@@ -76,23 +93,21 @@ ZipChip/
 
 ## Development Notes
 
-- **Memory Model**: The interpreter reserves 4 KB of memory (`[4096]u8`), aligning with the original CHIP-8 specification. Fonts are injected during initialization, and programs are loaded from `0x200`.
-- **Instruction Fetching**: Each opcode is 2 bytes (`instruction_size = 2`). As more opcodes are added, `opcode` decoding will branch into dedicated handler functions.
-- **Randomness**: The emulator uses Zig’s `std.crypto.random` for the `RND` opcode (yet to be implemented).
-- **Error Handling**: Custom errors like `StackUnderflow` and `StackOverflow` surface fault conditions during stack manipulation, aiding debugging.
+- **Opcode tracing**: Every emulation cycle logs the fetched opcode (`Debug: Opcode called: 0x...`). This is invaluable while validating ROM behavior; remove or gate the print when running release builds.
+- **Timer cadence**: CPU and timer frequencies are configurable constants (`target_instructions_per_second`, `target_timer_hz`). Adjust them cautiously to preserve ROM compatibility.
+- **Rendering**: The framebuffer is stored as a `64*32` array of `u32`. Pixels are toggled via XOR, mirroring the original CHIP-8 collision semantics.
+- **Memory safety**: Bounds checks guard the program counter and ROM loading. Errors propagate via Zig’s `error` union types, making fault conditions explicit.
 
 ---
 
 ## Roadmap
 
-- [ ] Complete opcode implementation and decoder
-- [ ] Integrate a timing loop that respects delay/sound timers
-- [ ] Add a renderer (e.g., SDL, Raylib, or a Zig-native backend)
-- [ ] Provide keyboard input mapping
-- [ ] Expand tests to cover individual instructions
-- [ ] Add tooling for ROM selection and execution profiles
-
-Suggestions and contributions are welcome! Feel free to open issues or submit pull requests as the emulator evolves.
+- [ ] Finish the remaining CHIP-8 opcodes (`0x00CN`, `0x00FB`, `0xFX75`, etc.) and verify behavior against reference ROMs.
+- [ ] Implement audible feedback when the sound timer is non-zero.
+- [ ] Add configuration flags (e.g., disable opcode logging, set CPU frequency).
+- [ ] Integrate `raygui` for runtime ROM selection and emulator controls.
+- [ ] Introduce automated tests for individual opcodes and integration scenarios.
+- [ ] Provide build instructions for additional platforms (Windows/macOS) and package formats.
 
 ---
 
