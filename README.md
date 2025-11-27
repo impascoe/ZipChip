@@ -16,22 +16,22 @@ ZipChip is a [CHIP-8](https://en.wikipedia.org/wiki/CHIP-8) emulator written in 
 
 ## Implemented Features
 
-- ✅ **Complete VM state initialization**: 16 general-purpose registers, index register, stack pointer, timers, keypad, and 4 KB memory map seeded with the standard fontset at `0x50`.
-- ✅ **ROM loader with bounds checking**: Streams `.c8` binaries into interpreter memory starting at `0x200`, validating file size before allocation.
-- ✅ **Arena-backed allocations**: Uses `std.heap.ArenaAllocator` to make lifetime management explicit and deterministic.
-- ✅ **Opcode execution core**: Implements the majority of the CHIP-8 instruction set, including:
+- [x] **Complete VM state initialization**: 16 general-purpose registers, index register, stack pointer, timers, keypad, and 4 KB memory map seeded with the standard fontset at `0x50`.
+- [x] **ROM loader with bounds checking**: Streams `.c8` binaries into interpreter memory starting at `0x200`, validating file size before allocation.
+- [x] **Arena-backed allocations**: Uses `std.heap.ArenaAllocator` to make lifetime management explicit and deterministic.
+- [x] **Opcode execution core**: Implements the majority of the CHIP-8 instruction set, including:
   - Flow control (`CLS`, `RET`, `JP`, `CALL`, `SE`, `SNE`, `SKP`, `SKNP`)
   - Register operations (`LD`, arithmetic/logic, bit shifts, BCD, bulk memory transfers)
   - Graphics drawing (`DRW`) with collision detection
   - Timers and random number generation (`LD DT/ST`, `RND`)
-- ✅ **Timing & rendering loop**: Synchronizes CPU and timer cadence independently and draws the framebuffer every frame.
-- ✅ **Keyboard input mapping**: Translates PC keyboard keys (`1`–`4`, `Q`–`V`) to the CHIP-8 keypad (`0x0`–`0xF`).
+- [x] **Timing & rendering loop**: Synchronizes CPU and timer cadence independently and draws the framebuffer every frame.
+- [x] **Keyboard input mapping**: Translates PC keyboard keys (`1`–`4`, `Q`–`V`) to the CHIP-8 keypad (`0x0`–`0xF`).
 
 ---
 
 ## Prerequisites
 
-- **Zig** `0.15.2` or newer (matches the project’s `build.zig.zon`)
+- **Zig** `0.15.2` or newer
 - **raylib** development libraries installed on your system
   - On Linux you can typically install via your package manager (e.g., `sudo pacman -S raylib` or `sudo apt install libraylib-dev`)
   - Ensure the headers and library files are discoverable by your compiler/linker
