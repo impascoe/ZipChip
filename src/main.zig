@@ -70,7 +70,7 @@ fn render(chip: *chip8, scale: usize) void {
     defer tones.deinit(std.heap.page_allocator, samples);
     std.debug.print("\n{any}\n", .{samples.len});
 
-    const stream = rl.loadAudioStream(44100, 16, 2) catch |err| {
+    const stream = rl.loadAudioStream(44100, 16, 1) catch |err| {
         std.debug.print("Failed to load audio stream. Error: {}\n", .{err});
         return;
     };
@@ -147,8 +147,6 @@ fn render(chip: *chip8, scale: usize) void {
         handleInput(chip);
     }
 }
-
-fn initBeep() void {}
 
 fn handleInput(chip: *chip8) void {
     if (rl.isKeyDown(rl.KeyboardKey.one)) chip.keypad[0x1] = 1;
