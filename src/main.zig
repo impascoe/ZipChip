@@ -35,14 +35,6 @@ pub fn main() !void {
         return;
     };
 
-    // var i: u32 = 0;
-    // while (i < 40) : (i += 1) {
-    //     chip.emulateCycle() catch |err| {
-    //         std.debug.print("Emulation cycle failed. Error: {}\n", .{err});
-    //         return;
-    //     };
-    // }
-
     render(&chip, scale);
 }
 
@@ -62,7 +54,7 @@ fn render(chip: *chip8, scale: usize) void {
     rl.initAudioDevice();
     defer rl.closeAudioDevice();
 
-    const samples = tones.generateSineWave(std.heap.page_allocator, 0.5, 44100, 0.3) catch {
+    const samples = tones.generateSineWave(std.heap.page_allocator, 44100, 0.3) catch {
         std.debug.print("Failed to generate sine wave samples.\n", .{});
         return;
     };

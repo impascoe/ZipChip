@@ -2,15 +2,14 @@ const std = @import("std");
 
 // sine wave formula: y(time) = A*sin(tau * frequency * time)
 
-pub fn generateSineWave(allocator: std.mem.Allocator, duration: f32, sample_rate: u32, volume: f32) ![]i16 {
-    // const total_samples: usize = @as(u32, @intFromFloat(duration * @as(f32, @floatFromInt(sample_rate))));
+pub fn generateSineWave(allocator: std.mem.Allocator, sample_rate: u32, volume: f32) ![]i16 {
     const total_samples = 4096;
     const sine_wave = try allocator.alloc(i16, total_samples);
 
     const frequency = 440.0;
     const tau = std.math.tau;
 
-    std.debug.print("Generating sine wave: duration={}s, sample_rate={}Hz, total_samples={}, frequency={}Hz, volume={}\n", .{ duration, sample_rate, total_samples, frequency, volume });
+    std.debug.print("Generating sine wave: sample_rate={}Hz, total_samples={}, frequency={}Hz, volume={}\n", .{ sample_rate, total_samples, frequency, volume });
 
     std.debug.print("Sine wave size {}\n", .{sine_wave.len});
 
