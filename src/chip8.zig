@@ -331,11 +331,11 @@ pub const Chip8 = struct {
     // 8XY6 - SE Vx, Vy: Set Vx = Vx SHR 1
     fn op8XY6(self: *Chip8) void {
         const x: u8 = @intCast((self.opcode & 0x0F00) >> 8);
-        // const y: u8 = @intCast((self.opcode & 0x00F0) >> 4);
+        const y: u8 = @intCast((self.opcode & 0x00F0) >> 4);
 
-        const vx = self.registers[x];
-        self.registers[x] = vx >> 1;
-        self.registers[0xF] = if (vx & 1 != 0) 1 else 0;
+        const vy = self.registers[y];
+        self.registers[x] = vy >> 1;
+        self.registers[0xF] = if (vy & 1 != 0) 1 else 0;
     }
 
     // 8XY7 - SE Vx, Vy: Set Vx = Vy - Vx
@@ -353,10 +353,11 @@ pub const Chip8 = struct {
     // 8XYE - SE Vx, Vy: Set Vx = Vx SHL 1
     fn op8XYE(self: *Chip8) void {
         const x: u8 = @intCast((self.opcode & 0x0F00) >> 8);
+        const y: u8 = @intCast((self.opcode & 0x00F0) >> 4);
 
-        const vx = self.registers[x];
-        self.registers[x] = vx << 1;
-        self.registers[0xF] = if ((vx & 0x80) >> 7 != 0) 1 else 0;
+        const vy = self.registers[y];
+        self.registers[x] = vy << 1;
+        self.registers[0xF] = if ((vy & 0x80) >> 7 != 0) 1 else 0;
     }
 
     // 9XY0 - SNE Vx, Vy: Skip next instruction if Vx != Vy
