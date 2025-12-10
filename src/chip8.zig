@@ -421,12 +421,23 @@ pub const Chip8 = struct {
         self.registers[0xF] = 0;
 
         for (0..@as(usize, height)) |row| {
+            const yy = y_pos + row;
+            if (yy >= 32) {
+                break;
+            }
+
             const sprite_byte = self.memory[self.index + row];
 
             for (0..8) |col| {
+                const xx = x_pos + col;
+                if (xx >= 64) {
+                    break;
+                }
+
                 const mask: u8 = @as(u8, 0x80) >> @intCast(col); // col is 0..7
                 if ((sprite_byte & mask) != 0) {
                     const pixel_index = @as(usize, (x_pos + col) % 64 + ((y_pos + row) % 32) * 64);
+
                     if (self.video[pixel_index] != 0) {
                         self.registers[0xF] = 1;
                     }
