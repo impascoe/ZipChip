@@ -9,7 +9,7 @@ ZipChip is a CHIP-8 emulator written in Zig with a real-time renderer and audio 
 - The VM boots with the canonical fontset, loads CHIP-8 binaries into memory, and executes a large subset of the instruction matrix.
 - A raylib window renders the 64×32 monochrome framebuffer at an arbitrary integer scale.
 - Keyboard events are mapped to the CHIP-8 hexadecimal keypad layout.
-- Delay and sound timers tick at 60 Hz; the CPU targets 500 instructions per second.
+- Delay and sound timers tick at 60 Hz; the CPU targets 700 instructions per second.
 - A generated sine wave is streamed through raylib’s `AudioStream` whenever the sound timer is non-zero.
 - Opcode tracing is enabled to help finalize instruction coverage.
 
@@ -55,7 +55,7 @@ The emulator binary is produced at `zig-out/bin/ZipChip`.
 
 ## Running
 
-Execute the built binary directly or forward args through `zig build run`:
+Execute the built binary directly or forward args through `zig build run` (the program expects exactly two arguments and prints `Usage: zch8 <scale> <rom>` if they are missing or invalid):
 
 ```bash
 ./zig-out/bin/ZipChip <scale> <path-to-rom>
@@ -64,7 +64,7 @@ zig build run -- <scale> <path-to-rom>
 ```
 
 - `<scale>`: integer pixel multiplier (e.g., `10` → 640×320 window).
-- `<path-to-rom>`: path to a CHIP-8 ROM (`.c8`). A few sample ROMs are included in the repo root (`1-chip8-logo.ch8`, `2-ibm-logo.ch8`, etc.).
+- `<path-to-rom>`: path to a CHIP-8 ROM (`.ch8`). Sample ROMs live in `roms/` (e.g., `roms/1-chip8-logo.ch8`, `roms/5-quirks.ch8`).
 
 On invalid scale or missing ROM, the app prints a diagnostic and exits gracefully.
 
@@ -96,7 +96,8 @@ ZipChip/
 ├── README.md          # Project documentation (this file)
 ├── .gitignore
 ├── zig-out/           # Build outputs
-└── *.ch8              # Example CHIP-8 ROMs
+├── roms/              # Example CHIP-8 ROMs
+└── *.ch8              # Additional ROMs you add yourself
 ```
 
 ---
