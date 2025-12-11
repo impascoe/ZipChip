@@ -44,6 +44,7 @@ pub const Chip8 = struct {
     keypad: [16]u8,
     video: [64 * 32]u32,
     opcode: u16,
+    draw_wait: bool,
 
     pub fn init(allocator: std.mem.Allocator) !Chip8 {
         var arena = std.heap.ArenaAllocator.init(allocator);
@@ -63,6 +64,7 @@ pub const Chip8 = struct {
             .keypad = [_]u8{0} ** 16,
             .video = [_]u32{0} ** (64 * 32),
             .opcode = 0,
+            .draw_wait = false,
         };
 
         // Load the fontset into memory.
@@ -105,6 +107,11 @@ pub const Chip8 = struct {
     }
 
     pub fn emulateCycle(self: *Chip8) !void {
+        if (self.draw_wait) {
+            // Waiting for vblank; do not execute instructions this cycle
+            return;
+        }
+
         const current_pc: usize = @intCast(self.pc);
         if (current_pc + 1 >= self.memory.len) {
             return error.PcOutOfBounds;
@@ -426,6 +433,7 @@ pub const Chip8 = struct {
                 }
             }
         }
+        self.draw_wait = true;
     }
 
     // EX9E - SKP Vx: Skip next instruction if key with the value of Vx is pressed
@@ -509,6 +517,8 @@ pub const Chip8 = struct {
         for (0..x + 1) |i| {
             self.memory[self.index + @as(usize, i)] = self.registers[i];
         }
+
+        self.index = self.index + @as(u16, x) + 1;
     }
 
     // FX65 - LD Vx, [I]: Read registers V0 through Vx from memory starting at location I
@@ -518,5 +528,7 @@ pub const Chip8 = struct {
         for (0..x + 1) |i| {
             self.registers[i] = self.memory[self.index + @as(usize, i)];
         }
+
+        self.index = self.index + @as(u16, x) + 1;
     }
 };

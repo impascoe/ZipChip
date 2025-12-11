@@ -85,6 +85,8 @@ fn render(chip: *chip8, scale: usize) void {
     while (!rl.windowShouldClose()) {
         const now = std.time.nanoTimestamp();
 
+        chip.draw_wait = false;
+
         while (now - last_timer_ns >= timer_interval_ns) : (last_timer_ns += timer_interval_ns) {
             if (chip.delay_timer > 0) chip.delay_timer -= 1;
             if (chip.sound_timer > 0) {
