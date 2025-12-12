@@ -39,8 +39,8 @@ pub fn main() !void {
 }
 
 fn render(chip: *chip8, scale: usize) void {
-    const target_instructions_per_second: usize = 700;
     const target_timer_hz: usize = 60;
+    const target_instructions_per_second: usize = target_timer_hz * 100;
 
     const pixel_size: usize = scale;
 
