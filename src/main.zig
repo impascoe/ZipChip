@@ -13,7 +13,7 @@ pub fn main() !void {
     defer std.process.argsFree(std.heap.page_allocator, args);
 
     if (args.len != 3) {
-        std.debug.print("Usage: zch8 <scale> <rom>\n", .{});
+        std.debug.print("Usage: zipchip <scale> <rom>\n", .{});
         return;
     }
 
