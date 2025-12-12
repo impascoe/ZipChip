@@ -6,7 +6,8 @@ pub fn build(b: *std.Build) void {
     const optimize = b.standardOptimizeOption(.{});
 
     const exe = b.addExecutable(.{
-        .name = "ZipChip",
+        .name = "zipchip",
+        .version = .{ .major = 1, .minor = 0, .patch = 0 },
         .root_module = b.createModule(.{
             .root_source_file = b.path("src/main.zig"),
             .target = target,
