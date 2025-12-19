@@ -28,7 +28,7 @@ pub fn build(b: *std.Build) void {
     const raylib_dep = b.dependency("raylib_zig", .{
         .target = target,
         .optimize = optimize,
-        .linkage = .static,
+        .linkage = .dynamic,
     });
 
     const raylib = raylib_dep.module("raylib"); // main raylib module
@@ -44,6 +44,7 @@ pub fn build(b: *std.Build) void {
     run_tests.has_side_effects = false;
 
     b.installArtifact(exe);
+    b.installArtifact(raylib_artifact);
 
     const exe_check = b.addExecutable(.{
         .name = "ZipChipCheck",

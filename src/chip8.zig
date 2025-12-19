@@ -32,7 +32,6 @@ pub const Chip8 = struct {
     const rand = std.crypto.random;
 
     arena: std.heap.ArenaAllocator,
-    allocator: std.mem.Allocator,
     registers: [16]u8,
     memory: [4096]u8,
     index: u16,
@@ -52,7 +51,6 @@ pub const Chip8 = struct {
 
         var c8 = Chip8{
             .arena = arena,
-            .allocator = arena.allocator(),
             .registers = [_]u8{0} ** 16,
             .memory = [_]u8{0} ** 4096,
             .index = 0,
@@ -94,8 +92,10 @@ pub const Chip8 = struct {
             return error.RomTooLarge;
         }
 
-        const rom = try self.allocator.alloc(u8, rom_size);
-        defer self.allocator.free(rom);
+        const alloc = self.arena.allocator();
+
+        const rom = try alloc.alloc(u8, rom_size);
+        defer alloc.free(rom);
 
         var reader = file.reader(rom);
 
