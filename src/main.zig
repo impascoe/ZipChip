@@ -2,6 +2,7 @@ const std = @import("std");
 const rl = @import("raylib");
 const rg = @import("raygui");
 
+const tones = @import("tonegen.zig");
 const chip8 = @import("chip8.zig").Chip8;
 
 const VIDEO_WIDTH: usize = 64;
@@ -12,7 +13,7 @@ pub fn main() !void {
     defer std.process.argsFree(std.heap.page_allocator, args);
 
     if (args.len != 3) {
-        std.debug.print("Usage: zch8 <scale> <rom>\n", .{});
+        std.debug.print("Usage: zipchip <scale> <rom>\n", .{});
         return;
     }
 
@@ -34,20 +35,12 @@ pub fn main() !void {
         return;
     };
 
-    // var i: u32 = 0;
-    // while (i < 40) : (i += 1) {
-    //     chip.emulateCycle() catch |err| {
-    //         std.debug.print("Emulation cycle failed. Error: {}\n", .{err});
-    //         return;
-    //     };
-    // }
-
     render(&chip, scale);
 }
 
 fn render(chip: *chip8, scale: usize) void {
-    const target_instructions_per_second: usize = 500;
     const target_timer_hz: usize = 60;
+    const target_instructions_per_second: usize = target_timer_hz * 100;
 
     const pixel_size: usize = scale;
 
@@ -58,6 +51,32 @@ fn render(chip: *chip8, scale: usize) void {
     rl.initWindow(@intCast(VIDEO_WIDTH * pixel_size), @intCast(VIDEO_HEIGHT * pixel_size), "ZipChip Emulator");
     defer rl.closeWindow();
 
+    rl.initAudioDevice();
+    defer rl.closeAudioDevice();
+
+    const samples = tones.generateSineWave(std.heap.page_allocator, 44100, 0.3) catch {
+        std.debug.print("Failed to generate sine wave samples.\n", .{});
+        return;
+    };
+
+    defer tones.deinit(std.heap.page_allocator, samples);
+    std.debug.print("\n{any}\n", .{samples.len});
+
+    const stream = rl.loadAudioStream(44100, 16, 1) catch |err| {
+        std.debug.print("Failed to load audio stream. Error: {}\n", .{err});
+        return;
+    };
+
+    var prev_sound_timer: usize = chip.sound_timer;
+
+    defer rl.unloadAudioStream(stream);
+
+    rl.playAudioStream(stream);
+
+    rl.updateAudioStream(stream, samples.ptr, @intCast(samples.len));
+
+    std.debug.print("Audio Stream: {any}\n", .{stream});
+
     rl.setTargetFPS(60);
 
     var last_instr_ns = std.time.nanoTimestamp();
@@ -66,9 +85,13 @@ fn render(chip: *chip8, scale: usize) void {
     while (!rl.windowShouldClose()) {
         const now = std.time.nanoTimestamp();
 
+        chip.draw_wait = false;
+
         while (now - last_timer_ns >= timer_interval_ns) : (last_timer_ns += timer_interval_ns) {
             if (chip.delay_timer > 0) chip.delay_timer -= 1;
-            if (chip.sound_timer > 0) chip.sound_timer -= 1;
+            if (chip.sound_timer > 0) {
+                chip.sound_timer -= 1;
+            }
         }
 
         while (now - last_instr_ns >= instr_interval_ns) : (last_instr_ns += instr_interval_ns) {
@@ -77,6 +100,29 @@ fn render(chip: *chip8, scale: usize) void {
                 return;
             };
         }
+
+        const current_sound_timer = chip.sound_timer;
+
+        if (current_sound_timer > 0) {
+            // Start stream when going from 0 -> non-zero
+            if (prev_sound_timer == 0) {
+                rl.playAudioStream(stream);
+            }
+
+            // Feed stream as needed
+            if (rl.isAudioStreamProcessed(stream)) {
+                // frame_count is "number of samples per channel"
+                const frame_count: i32 = @intCast(samples.len);
+                rl.updateAudioStream(stream, samples.ptr, frame_count);
+            }
+        } else {
+            // Optional: stop/pause when it reaches 0
+            if (prev_sound_timer > 0) {
+                rl.stopAudioStream(stream);
+            }
+        }
+
+        prev_sound_timer = current_sound_timer;
 
         rl.beginDrawing();
         defer rl.endDrawing();

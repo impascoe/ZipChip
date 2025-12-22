@@ -6,7 +6,8 @@ pub fn build(b: *std.Build) void {
     const optimize = b.standardOptimizeOption(.{});
 
     const exe = b.addExecutable(.{
-        .name = "ZipChip",
+        .name = "zipchip",
+        .version = .{ .major = 1, .minor = 0, .patch = 0 },
         .root_module = b.createModule(.{
             .root_source_file = b.path("src/main.zig"),
             .target = target,
@@ -34,7 +35,7 @@ pub fn build(b: *std.Build) void {
     const raygui = raylib_dep.module("raygui"); // raygui module
     const raylib_artifact = raylib_dep.artifact("raylib"); // raylib C library
 
-    exe.linkLibrary(raylib_artifact);
+    exe.root_module.linkLibrary(raylib_artifact);
     exe.root_module.addImport("raylib", raylib);
     exe.root_module.addImport("raygui", raygui);
 
@@ -43,6 +44,7 @@ pub fn build(b: *std.Build) void {
     run_tests.has_side_effects = false;
 
     b.installArtifact(exe);
+    b.installArtifact(raylib_artifact);
 
     const exe_check = b.addExecutable(.{
         .name = "ZipChipCheck",

@@ -32,7 +32,6 @@ pub const Chip8 = struct {
     const rand = std.crypto.random;
 
     arena: std.heap.ArenaAllocator,
-    allocator: std.mem.Allocator,
     registers: [16]u8,
     memory: [4096]u8,
     index: u16,
@@ -44,6 +43,7 @@ pub const Chip8 = struct {
     keypad: [16]u8,
     video: [64 * 32]u32,
     opcode: u16,
+    draw_wait: bool,
 
     pub fn init(allocator: std.mem.Allocator) !Chip8 {
         var arena = std.heap.ArenaAllocator.init(allocator);
@@ -51,7 +51,6 @@ pub const Chip8 = struct {
 
         var c8 = Chip8{
             .arena = arena,
-            .allocator = arena.allocator(),
             .registers = [_]u8{0} ** 16,
             .memory = [_]u8{0} ** 4096,
             .index = 0,
@@ -63,6 +62,7 @@ pub const Chip8 = struct {
             .keypad = [_]u8{0} ** 16,
             .video = [_]u32{0} ** (64 * 32),
             .opcode = 0,
+            .draw_wait = false,
         };
 
         // Load the fontset into memory.
@@ -92,8 +92,10 @@ pub const Chip8 = struct {
             return error.RomTooLarge;
         }
 
-        const rom = try self.allocator.alloc(u8, rom_size);
-        defer self.allocator.free(rom);
+        const alloc = self.arena.allocator();
+
+        const rom = try alloc.alloc(u8, rom_size);
+        defer alloc.free(rom);
 
         var reader = file.reader(rom);
 
@@ -105,6 +107,11 @@ pub const Chip8 = struct {
     }
 
     pub fn emulateCycle(self: *Chip8) !void {
+        if (self.draw_wait) {
+            // Waiting for vblank; do not execute instructions this cycle
+            return;
+        }
+
         const current_pc: usize = @intCast(self.pc);
         if (current_pc + 1 >= self.memory.len) {
             return error.PcOutOfBounds;
@@ -281,6 +288,7 @@ pub const Chip8 = struct {
         const y: u8 = @intCast((self.opcode & 0x00F0) >> 4);
 
         self.registers[x] |= self.registers[y];
+        self.registers[0xF] = 0;
     }
 
     // 8XY2 - SE Vx, Vy: Set Vx = Vx AND Vy
@@ -289,6 +297,7 @@ pub const Chip8 = struct {
         const y: u8 = @intCast((self.opcode & 0x00F0) >> 4);
 
         self.registers[x] &= self.registers[y];
+        self.registers[0xF] = 0;
     }
 
     // 8XY3 - SE Vx, Vy: Set Vx = Vx OR Vy
@@ -297,6 +306,7 @@ pub const Chip8 = struct {
         const y: u8 = @intCast((self.opcode & 0x00F0) >> 4);
 
         self.registers[x] ^= self.registers[y];
+        self.registers[0xF] = 0;
     }
 
     // 8XY4 - SE Vx, Vy: Set Vx = Vx + Vy
@@ -304,14 +314,13 @@ pub const Chip8 = struct {
         const x: u8 = @intCast((self.opcode & 0x0F00) >> 8);
         const y: u8 = @intCast((self.opcode & 0x00F0) >> 4);
 
-        const ov = @addWithOverflow(self.registers[x], self.registers[y]);
-        if (ov[1] != 0) {
-            self.registers[0xF] = 1;
-        } else {
-            self.registers[0xF] = 0;
-        }
+        const vx = self.registers[x];
+        const vy = self.registers[y];
 
-        self.registers[x] = ov[0] & 0xFF;
+        const ov = @addWithOverflow(vx, vy);
+        self.registers[x] = ov[0];
+
+        self.registers[0xF] = if (ov[1] != 0) 1 else 0;
     }
 
     // 8XY5 - SE Vx, Vy: Set Vx = Vx - Vy
@@ -319,43 +328,43 @@ pub const Chip8 = struct {
         const x: u8 = @intCast((self.opcode & 0x0F00) >> 8);
         const y: u8 = @intCast((self.opcode & 0x00F0) >> 4);
 
-        if (self.registers[x] > self.registers[y]) {
-            self.registers[0xF] = 1;
-        } else {
-            self.registers[0xF] = 0;
-        }
+        const vx = self.registers[x];
+        const vy = self.registers[y];
 
-        self.registers[x] = self.registers[x] -% self.registers[y];
+        self.registers[x] = vx -% vy;
+        self.registers[0xF] = if (vx >= vy) 1 else 0;
     }
 
     // 8XY6 - SE Vx, Vy: Set Vx = Vx SHR 1
     fn op8XY6(self: *Chip8) void {
         const x: u8 = @intCast((self.opcode & 0x0F00) >> 8);
+        const y: u8 = @intCast((self.opcode & 0x00F0) >> 4);
 
-        self.registers[0xF] = self.registers[x] & 0x1;
-        self.registers[x] >>= 1;
+        const vy = self.registers[y];
+        self.registers[x] = vy >> 1;
+        self.registers[0xF] = if (vy & 1 != 0) 1 else 0;
     }
 
-    // 8XY7 - SE Vx, Vy: Set Vx = Vx - Vy
+    // 8XY7 - SE Vx, Vy: Set Vx = Vy - Vx
     fn op8XY7(self: *Chip8) void {
         const x: u8 = @intCast((self.opcode & 0x0F00) >> 8);
         const y: u8 = @intCast((self.opcode & 0x00F0) >> 4);
 
-        if (self.registers[y] > self.registers[x]) {
-            self.registers[0xF] = 1;
-        } else {
-            self.registers[0xF] = 0;
-        }
+        const vx = self.registers[x];
+        const vy = self.registers[y];
 
-        self.registers[x] = self.registers[y] -% self.registers[x];
+        self.registers[x] = vy -% vx;
+        self.registers[0xF] = if (vy >= vx) 1 else 0;
     }
 
     // 8XYE - SE Vx, Vy: Set Vx = Vx SHL 1
     fn op8XYE(self: *Chip8) void {
         const x: u8 = @intCast((self.opcode & 0x0F00) >> 8);
+        const y: u8 = @intCast((self.opcode & 0x00F0) >> 4);
 
-        self.registers[0xF] = (self.registers[x] & 0x80) >> 7;
-        self.registers[x] <<= 1;
+        const vy = self.registers[y];
+        self.registers[x] = vy << 1;
+        self.registers[0xF] = if ((vy & 0x80) >> 7 != 0) 1 else 0;
     }
 
     // 9XY0 - SNE Vx, Vy: Skip next instruction if Vx != Vy
@@ -400,12 +409,23 @@ pub const Chip8 = struct {
         self.registers[0xF] = 0;
 
         for (0..@as(usize, height)) |row| {
+            const yy = y_pos + row;
+            if (yy >= 32) {
+                break;
+            }
+
             const sprite_byte = self.memory[self.index + row];
 
             for (0..8) |col| {
+                const xx = x_pos + col;
+                if (xx >= 64) {
+                    break;
+                }
+
                 const mask: u8 = @as(u8, 0x80) >> @intCast(col); // col is 0..7
                 if ((sprite_byte & mask) != 0) {
                     const pixel_index = @as(usize, (x_pos + col) % 64 + ((y_pos + row) % 32) * 64);
+
                     if (self.video[pixel_index] != 0) {
                         self.registers[0xF] = 1;
                     }
@@ -413,6 +433,7 @@ pub const Chip8 = struct {
                 }
             }
         }
+        self.draw_wait = true;
     }
 
     // EX9E - SKP Vx: Skip next instruction if key with the value of Vx is pressed
@@ -496,6 +517,8 @@ pub const Chip8 = struct {
         for (0..x + 1) |i| {
             self.memory[self.index + @as(usize, i)] = self.registers[i];
         }
+
+        self.index = self.index + @as(u16, x) + 1;
     }
 
     // FX65 - LD Vx, [I]: Read registers V0 through Vx from memory starting at location I
@@ -505,5 +528,7 @@ pub const Chip8 = struct {
         for (0..x + 1) |i| {
             self.registers[i] = self.memory[self.index + @as(usize, i)];
         }
+
+        self.index = self.index + @as(u16, x) + 1;
     }
 };
