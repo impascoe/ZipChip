@@ -7,17 +7,17 @@ ZipChip is a CHIP-8 emulator written in Zig with a real-time renderer and audio 
 ## Current Status
 
 - The VM boots with the canonical fontset, loads CHIP-8 binaries into memory, and executes a large subset of the instruction matrix.
-- A raylib window renders the 64×32 monochrome framebuffer at an arbitrary integer scale.
+- A raylib window renders the 64x32 monochrome framebuffer at an arbitrary integer scale.
 - Keyboard events are mapped to the CHIP-8 hexadecimal keypad layout.
-- Delay and sound timers tick at 60 Hz; the CPU targets 700 instructions per second.
-- A generated sine wave is streamed through raylib’s `AudioStream` whenever the sound timer is non-zero.
+- Delay and sound timers tick at 60Hz; the CPU targets 700 instructions per second.
+- A generated sine wave is streamed through raylib's `AudioStream` whenever the sound timer is non-zero.
 - Opcode tracing is enabled to help finalize instruction coverage.
 
 ---
 
 ## Implemented Features
 
-- [x] **Complete VM state initialization**: 16 general-purpose registers, index register, stack pointer, timers, keypad, and 4 KB memory map seeded with the standard fontset at `0x50`.
+- [x] **Complete VM state initialization**: 16 general-purpose registers, index register, stack pointer, timers, keypad, and 4KB memory map seeded with the standard fontset at `0x50`.
 - [x] **ROM loader with bounds checking**: Streams `.c8` binaries into interpreter memory starting at `0x200`, validating file size before allocation.
 - [x] **Arena-backed allocations**: Uses `std.heap.ArenaAllocator` to make lifetime management explicit and deterministic.
 - [x] **Opcode execution core**: Implements the majority of the CHIP-8 instruction set, including:
@@ -26,7 +26,7 @@ ZipChip is a CHIP-8 emulator written in Zig with a real-time renderer and audio 
   - Graphics drawing (`DRW`) with collision detection
   - Timers and random number generation (`LD DT/ST`, `RND`)
 - [x] **Timing & rendering loop**: Synchronizes CPU and timer cadence independently and draws the framebuffer every frame.
-- [x] **Keyboard input mapping**: Translates PC keyboard keys (`1`–`4`, `Q`–`V`) to the CHIP-8 keypad (`0x0`–`0xF`).
+- [x] **Keyboard input mapping**: Translates PC keyboard keys (`1`-`4`, `Q`-`V`) to the CHIP-8 keypad (`0x0`-`0xF`).
 
 ---
 
@@ -62,7 +62,7 @@ Execute the built binary directly or forward args through `zig build run` (the p
 zig build run -- <scale> <path-to-rom>
 ```
 
-- `<scale>`: integer pixel multiplier (e.g., `10` → 640×320 window).
+- `<scale>`: integer pixel multiplier (e.g., `10` == 640x320 window).
 - `<path-to-rom>`: path to a CHIP-8 ROM (`.ch8`). Sample ROMs live in `roms/` (e.g., `roms/1-chip8-logo.ch8`, `roms/5-quirks.ch8`).
 
 On invalid scale or missing ROM, the app prints a diagnostic and exits gracefully.
