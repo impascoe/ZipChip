@@ -8,45 +8,46 @@ const chip8 = @import("chip8.zig").Chip8;
 const VIDEO_WIDTH: usize = 64;
 const VIDEO_HEIGHT: usize = 32;
 
-pub fn main() !void {
-    const args = try std.process.argsAlloc(std.heap.page_allocator);
-    defer std.process.argsFree(std.heap.page_allocator, args);
+pub fn main(init: std.process.Init) !void {
+    const gpa = init.gpa;
+    const io = init.io;
+    const args = try init.minimal.args.toSlice(init.arena.allocator());
 
     if (args.len != 3) {
-        std.debug.print("Usage: zipchip <scale> <rom>\n", .{});
+        std.log.err("Usage: zipchip <scale> <rom>", .{});
         return;
     }
 
     const scale: usize = std.fmt.parseInt(usize, args[1], 10) catch {
-        std.debug.print("Invalid scale factor. Please provide a valid integer.\n", .{});
+        std.log.err("Invalid scale factor. Please provide a valid integer.", .{});
         return;
     };
     const chip_rom: []const u8 = args[2];
 
-    var chip = chip8.init(std.heap.page_allocator) catch {
-        std.debug.print("Failed to initialize Chip8 emulator.\n", .{});
+    var chip = chip8.init(gpa, io) catch {
+        std.log.err("Failed to initialize Chip8 emulator.", .{});
         return;
     };
 
     defer chip.deinit();
 
     chip.loadROM(chip_rom) catch {
-        std.debug.print("Could not load chip 8 file. Make sure it is a valid .c8 file.\n", .{});
+        std.log.err("Could not load chip 8 file. Make sure it is a valid .c8 file.", .{});
         return;
     };
 
-    render(&chip, scale);
+    try render(&chip, scale, gpa, io);
 }
 
-fn render(chip: *chip8, scale: usize) void {
+fn render(chip: *chip8, scale: usize, allocator: std.mem.Allocator, io: std.Io) !void {
     const target_timer_hz: usize = 60;
     const target_instructions_per_second: usize = target_timer_hz * 100;
 
     const pixel_size: usize = scale;
 
     const ns_per_s = std.time.ns_per_s;
-    const instr_interval_ns: usize = @intCast(ns_per_s / target_instructions_per_second);
-    const timer_interval_ns: usize = @intCast(ns_per_s / target_timer_hz);
+    const instr_interval_ns: u64 = @intCast(ns_per_s / target_instructions_per_second);
+    const timer_interval_ns: u64 = @intCast(ns_per_s / target_timer_hz);
 
     rl.initWindow(@intCast(VIDEO_WIDTH * pixel_size), @intCast(VIDEO_HEIGHT * pixel_size), "ZipChip Emulator");
     defer rl.closeWindow();
@@ -54,16 +55,16 @@ fn render(chip: *chip8, scale: usize) void {
     rl.initAudioDevice();
     defer rl.closeAudioDevice();
 
-    const samples = tones.generateSineWave(std.heap.page_allocator, 44100, 0.3) catch {
-        std.debug.print("Failed to generate sine wave samples.\n", .{});
+    const samples = tones.generateSineWave(allocator, 44100, 0.3) catch {
+        std.log.err("Failed to generate sine wave samples.", .{});
         return;
     };
 
-    defer tones.deinit(std.heap.page_allocator, samples);
-    std.debug.print("\n{any}\n", .{samples.len});
+    defer tones.deinit(allocator, samples);
+    std.log.info("Audio samples: {d}", .{samples.len});
 
     const stream = rl.loadAudioStream(44100, 16, 1) catch |err| {
-        std.debug.print("Failed to load audio stream. Error: {}\n", .{err});
+        std.log.err("Failed to load audio stream. Error: {}", .{err});
         return;
     };
 
@@ -75,28 +76,39 @@ fn render(chip: *chip8, scale: usize) void {
 
     rl.updateAudioStream(stream, samples.ptr, @intCast(samples.len));
 
-    std.debug.print("Audio Stream: {any}\n", .{stream});
+    std.log.debug("Audio Stream: {any}", .{stream});
 
     rl.setTargetFPS(60);
 
-    var last_instr_ns = std.time.nanoTimestamp();
-    var last_timer_ns = last_instr_ns;
+    var last_frame = std.Io.Clock.now(.awake, io);
+    var instr_accum_ns: u64 = 0;
+    var timer_accum_ns: u64 = 0;
 
     while (!rl.windowShouldClose()) {
-        const now = std.time.nanoTimestamp();
+        const now = std.Io.Clock.now(.awake, io);
+        const delta_ns_i96 = last_frame.durationTo(now).toNanoseconds();
+        if (delta_ns_i96 < 0) {
+            last_frame = now;
+            continue;
+        }
+        const delta_ns: u64 = @intCast(delta_ns_i96);
+        last_frame = now;
+
+        instr_accum_ns += delta_ns;
+        timer_accum_ns += delta_ns;
 
         chip.draw_wait = false;
 
-        while (now - last_timer_ns >= timer_interval_ns) : (last_timer_ns += timer_interval_ns) {
+        while (timer_accum_ns >= timer_interval_ns) : (timer_accum_ns -= timer_interval_ns) {
             if (chip.delay_timer > 0) chip.delay_timer -= 1;
             if (chip.sound_timer > 0) {
                 chip.sound_timer -= 1;
             }
         }
 
-        while (now - last_instr_ns >= instr_interval_ns) : (last_instr_ns += instr_interval_ns) {
+        while (instr_accum_ns >= instr_interval_ns) : (instr_accum_ns -= instr_interval_ns) {
             chip.emulateCycle() catch |err| {
-                std.debug.print("Emulation cycle failed. Error: {}\n", .{err});
+                std.log.err("Emulation cycle failed. Error: {}", .{err});
                 return;
             };
         }

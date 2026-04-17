@@ -12,6 +12,7 @@ ZipChip is a CHIP-8 emulator written in Zig with a real-time renderer and audio 
 - Delay and sound timers tick at 60Hz; the CPU targets 700 instructions per second.
 - A generated sine wave is streamed through raylib's `AudioStream` whenever the sound timer is non-zero.
 - Opcode tracing is enabled to help finalize instruction coverage.
+- Tested against Timendus' CHIP-8 test suite (https://github.com/Timendus/chip8-test-suite) and passes all tests for CHIP-8.
 
 ---
 
@@ -32,7 +33,7 @@ ZipChip is a CHIP-8 emulator written in Zig with a real-time renderer and audio 
 
 ## Prerequisites
 
-- **Zig** `0.15.2` or newer
+- **Zig** `0.16.0` or newer
 - **raylib** development libraries installed on your system
   - On Linux you can typically install via your package manager (e.g., `sudo pacman -S raylib` or `sudo apt install libraylib-dev`)
   - Ensure the headers and library files are discoverable by your compiler/linker
@@ -63,7 +64,7 @@ zig build run -- <scale> <path-to-rom>
 ```
 
 - `<scale>`: integer pixel multiplier (e.g., `10` == 640x320 window).
-- `<path-to-rom>`: path to a CHIP-8 ROM (`.ch8`). Sample ROMs live in `roms/` (e.g., `roms/1-chip8-logo.ch8`, `roms/5-quirks.ch8`).
+- `<path-to-rom>`: path to a CHIP-8 ROM (`.ch8`). 
 
 On invalid scale or missing ROM, the app prints a diagnostic and exits gracefully.
 
@@ -95,7 +96,6 @@ ZipChip/
 ├── README.md          # Project documentation (this file)
 ├── .gitignore
 ├── zig-out/           # Build outputs
-├── roms/              # Example CHIP-8 ROMs
 └── *.ch8              # Additional ROMs you add yourself
 ```
 
@@ -103,7 +103,7 @@ ZipChip/
 
 ## Development Notes
 
-- **Opcode tracing**: Each cycle logs `Debug: Opcode called: 0x...`. Gate or remove for release builds.
+- **Opcode tracing**: Each cycle logs at `std.log.debug` with `Opcode called: 0x...`. Gate or remove for release builds.
 - **Timer cadence**: `target_instructions_per_second` and `target_timer_hz` live in `main.zig`. Tuning affects ROM compatibility.
 - **Rendering**: Framebuffer stored as `64*32` `u32`s; pixels toggle via XOR to preserve collision semantics.
 - **Audio**: `tonegen.zig` generates a short sine buffer; the sound timer drives start/stop of an `AudioStream`. Ensure your platform audio is configured.
@@ -113,7 +113,6 @@ ZipChip/
 
 ## Roadmap
 
-- [ ] Complete remaining CHIP-8 opcodes (scrolling variants, `0x00CN`, `0x00FB`, `0xFX75`, `0xFX85`, etc.) and validate against reference ROMs.
 - [ ] Add configurable flags (disable opcode logging, set CPU frequency, toggle audio).
 - [ ] Integrate raygui for runtime ROM selection and emulator controls.
 - [ ] Expand automated tests for opcode units and integration scenarios.

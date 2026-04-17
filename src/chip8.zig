@@ -29,9 +29,8 @@ pub const Chip8 = struct {
         0xF0, 0x80, 0xF0, 0x80, 0x80, // F
     };
 
-    const rand = std.crypto.random;
-
     arena: std.heap.ArenaAllocator,
+    io: std.Io,
     registers: [16]u8,
     memory: [4096]u8,
     index: u16,
@@ -45,12 +44,13 @@ pub const Chip8 = struct {
     opcode: u16,
     draw_wait: bool,
 
-    pub fn init(allocator: std.mem.Allocator) !Chip8 {
+    pub fn init(allocator: std.mem.Allocator, io: std.Io) !Chip8 {
         var arena = std.heap.ArenaAllocator.init(allocator);
         errdefer arena.deinit();
 
         var c8 = Chip8{
             .arena = arena,
+            .io = io,
             .registers = [_]u8{0} ** 16,
             .memory = [_]u8{0} ** 4096,
             .index = 0,
@@ -77,29 +77,23 @@ pub const Chip8 = struct {
         self.arena.deinit();
     }
 
-    fn getRandInt() u8 {
-        return rand.intRangeAtMost(u8, 0, 255);
+    fn getRandInt(self: *Chip8) u8 {
+        var byte: [1]u8 = undefined;
+        self.io.random(&byte);
+        return byte[0];
     }
 
     // Load ROM into memory
     pub fn loadROM(self: *Chip8, file_path: []const u8) !void {
-        const file = try std.fs.cwd().openFile(file_path, .{ .mode = .read_only });
-        defer file.close();
-
-        const rom_size = try file.getEndPos();
-
-        if (rom_size > self.memory.len - start_address) {
-            return error.RomTooLarge;
-        }
-
         const alloc = self.arena.allocator();
+        const max_size: usize = self.memory.len - start_address;
 
-        const rom = try alloc.alloc(u8, rom_size);
+        const rom = try std.Io.Dir.cwd().readFileAlloc(self.io, file_path, alloc, .limited(max_size));
         defer alloc.free(rom);
 
-        var reader = file.reader(rom);
-
-        try reader.interface.readSliceAll(rom);
+        if (rom.len > max_size) {
+            return error.RomTooLarge;
+        }
 
         for (rom, 0..) |b, i| {
             self.memory[start_address + i] = b;
@@ -122,7 +116,7 @@ pub const Chip8 = struct {
         const lo_byte = self.memory[current_pc + 1];
 
         self.opcode = (@as(u16, hi_byte) << 8) | @as(u16, lo_byte);
-        std.debug.print("Debug: Opcode called: 0x{X}\n", .{self.opcode});
+        std.log.debug("Opcode called: 0x{X}", .{self.opcode});
         // advance pc by default
         self.pc += instruction_size;
 
@@ -394,7 +388,7 @@ pub const Chip8 = struct {
         const x: u8 = @intCast((self.opcode & 0x0F00) >> 8);
         const kk: u8 = @intCast(self.opcode & 0x00FF);
 
-        self.registers[x] = getRandInt() & kk;
+        self.registers[x] = self.getRandInt() & kk;
     }
 
     // DXYN - DRW Vx, Vy, nibble: Display n-byte sprite starting at memory location I at (Vx, Vy), set VF = collision.

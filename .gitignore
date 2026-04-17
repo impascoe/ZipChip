@@ -1,7 +1,8 @@
 # ---> Zig
 .zig-cache/
 zig-out/
-
+zig-pkg/
+roms/
 # ---> macOS
 # General
 .DS_Store

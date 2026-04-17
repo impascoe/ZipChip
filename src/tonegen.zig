@@ -9,9 +9,9 @@ pub fn generateSineWave(allocator: std.mem.Allocator, sample_rate: u32, volume: 
     const frequency = 440.0;
     const tau = std.math.tau;
 
-    std.debug.print("Generating sine wave: sample_rate={}Hz, total_samples={}, frequency={}Hz, volume={}\n", .{ sample_rate, total_samples, frequency, volume });
+    std.log.info("Generating sine wave: sample_rate={}Hz, total_samples={}, frequency={}Hz, volume={}", .{ sample_rate, total_samples, frequency, volume });
 
-    std.debug.print("Sine wave size {}\n", .{sine_wave.len});
+    std.log.info("Sine wave size {}", .{sine_wave.len});
 
     for (sine_wave, 0..) |*sine_pos, i| {
         // std.debug.print("Generating sample {}/{}\n", .{ i + 1, total_samples });
