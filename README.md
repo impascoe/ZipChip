@@ -44,23 +44,46 @@ ZipChip is a CHIP-8 emulator written in Zig with a real-time renderer and audio 
 
 ```bash
 zig build
+# release build
+zig build -Doptimize=ReleaseFast
 # optional convenience steps
 zig build check   # fast validation build
 zig build test    # runs tests (imports main for now)
 ```
 
-The emulator binary is produced at `zig-out/bin/ZipChip`.
+The emulator binary is produced at `zig-out/bin/zipchip`.
+
+---
+
+## Installation
+
+Install layout (binary in `bin/`, raylib in `lib/`):
+
+``` bash
+
+tar -xzf zipchip-linux.tar.gz
+cd zipchip-linux
+mkdir -p ~/.local/bin ~/.local/lib
+install -m 755 bin/zipchip ~/.local/bin/
+install -m 755 lib/libraylib.so ~/.local/lib/
+
+# or if installing from source:
+
+zig build install --release=fast --prefix <install-prefix> (usually /usr/local or ~/.local for path, may require superuser access for former)
+```
 
 ---
 
 ## Running
 
-Execute the built binary directly or forward args through `zig build run` (the program expects exactly two arguments and prints `Usage: zch8 <scale> <rom>` if they are missing or invalid):
+Execute the built binary directly or forward args through:
 
 ```bash
-./zig-out/bin/ZipChip <scale> <path-to-rom>
-# or
 zig build run -- <scale> <path-to-rom>
+# or
+./zig-out/bin/zipchip <scale> <path-to-rom>
+# or if installed to path
+zipchip <scale> <path-to-rom>
 ```
 
 - `<scale>`: integer pixel multiplier (e.g., `10` == 640x320 window).
@@ -96,7 +119,7 @@ ZipChip/
 ├── README.md          # Project documentation (this file)
 ├── .gitignore
 ├── zig-out/           # Build outputs
-└── *.ch8              # Additional ROMs you add yourself
+└── *.ch8              # Additional ROMs you add yourself for testing
 ```
 
 ---

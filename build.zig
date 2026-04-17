@@ -15,6 +15,11 @@ pub fn build(b: *std.Build) void {
         }),
     });
 
+    if (target.result.os.tag == .linux) {
+        exe.root_module.addRPathSpecial("$ORIGIN");
+        exe.root_module.addRPathSpecial("$ORIGIN/../lib");
+    }
+
     // set test module path
     const tests = b.addTest(.{
         .name = "tests",
@@ -44,7 +49,13 @@ pub fn build(b: *std.Build) void {
     run_tests.has_side_effects = false;
 
     b.installArtifact(exe);
-    b.installArtifact(raylib_artifact);
+    if (target.result.os.tag == .linux) {
+        const raylib_so = raylib_artifact.getEmittedBin();
+        const install_raylib = b.addInstallFile(raylib_so, "lib/libraylib.so");
+        b.getInstallStep().dependOn(&install_raylib.step);
+    } else {
+        b.installArtifact(raylib_artifact);
+    }
 
     const exe_check = b.addExecutable(.{
         .name = "ZipChipCheck",
